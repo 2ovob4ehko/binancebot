@@ -9,9 +9,9 @@ use Auth;
 use DB;
 use Illuminate\Http\Request;
 
-class MainController extends Controller
+class MarketController extends Controller
 {
-    public function showMarket($id,Request $request)
+    public function show($id,Request $request)
     {
         if($id){
             $market = Market::findOrFail($id);
@@ -25,7 +25,7 @@ class MainController extends Controller
         ]);
     }
 
-    public function saveMarket(Request $request)
+    public function save(Request $request)
     {
         if($request->has('id')){
             Market::where('id',$request->id)->update([
@@ -64,13 +64,13 @@ class MainController extends Controller
         return redirect('/market/'.$id)->with('message', 'Налаштування збережено');
     }
 
-    public function deleteMarket($id, Request $request)
+    public function delete($id, Request $request)
     {
         Market::where('id',$id)->delete();
         return ["success" => true, "message" => 'Маркет видалено'];
     }
 
-    public function analysisMarket($id, Request $request)
+    public function analysis($id, Request $request)
     {
         $market = Market::where('id',$id)->first();
         $settings = $market->settings;
@@ -203,7 +203,7 @@ class MainController extends Controller
     }
 
     public static function multilimitQueryS($symbol,$interval,$limit){
-        $self = new MainController();
+        $self = new MarketController();
         return $self->multilimitQuery($symbol,$interval,$limit);
     }
     private function multilimitQuery($symbol,$interval,$limit)

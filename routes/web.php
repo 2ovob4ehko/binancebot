@@ -16,10 +16,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::group(['middleware' => ['auth']], function () {
     Route::get('/', [\App\Http\Controllers\HomeController::class, 'index']);
-    Route::get('/market/{id}', [\App\Http\Controllers\MainController::class, 'showMarket']);
-    Route::post('/market', [\App\Http\Controllers\MainController::class, 'saveMarket']);
-    Route::delete('/market/{id}', [\App\Http\Controllers\MainController::class, 'deleteMarket']);
-    Route::post('/market_analysis/{id}', [\App\Http\Controllers\MainController::class, 'analysisMarket']);
+    Route::get('/market/{id}', [\App\Http\Controllers\MarketController::class, 'show']);
+    Route::post('/market', [\App\Http\Controllers\MarketController::class, 'save']);
+    Route::delete('/market/{id}', [\App\Http\Controllers\MarketController::class, 'delete']);
+    Route::post('/market_analysis/{id}', [\App\Http\Controllers\MarketController::class, 'analysis']);
 });
 
 Auth::routes([
