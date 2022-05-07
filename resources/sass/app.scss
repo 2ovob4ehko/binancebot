@@ -1,0 +1,22 @@
+// Fonts
+@import url('https://fonts.googleapis.com/css?family=Nunito');
+@import '~@fortawesome/fontawesome-free/scss/fontawesome';
+@import '~@fortawesome/fontawesome-free/scss/solid';
+
+// Variables
+@import 'variables';
+
+// Bootstrap
+@import '~bootstrap/scss/bootstrap';
+
+.analysis_list_wrapper{
+    height: 0;
+    transition: all 0.5s ease;
+    overflow: hidden;
+}
+.analysis_list_wrapper.opened{
+    height: auto;
+}
+.table_striped>*:nth-of-type(odd){
+    box-shadow: inset 0 0 0 9999px rgba(0,0,0,0.05);
+}
