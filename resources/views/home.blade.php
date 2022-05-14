@@ -40,6 +40,13 @@
                                             @endif
                                         </div>
                                         <div class="ms-auto">
+                                            @if($market->upload_status === 'uploading')
+                                                <span class="badge bg-secondary">База завантажується</span>
+                                            @elseif($market->upload_status === 'uploaded')
+                                                <span class="badge bg-secondary">База завантажена</span>
+                                            @else
+                                                <button class="btn btn-secondary btn-sm upload_db m-1" data-market="{{$market->name}}" title="Завантажити базу" type="button"><i class="fa-solid fa-download"></i></button>
+                                            @endif
                                             <a href="/market/{{$market->id}}" target="_blank" class="btn btn-primary btn-sm m-1" type="button"><i class="fa-solid fa-pen"></i></a>
                                             <button class="btn btn-danger btn-sm delete m-1" data-id="{{$market->id}}" type="button"><i class="fa-solid fa-trash-can"></i></button>
                                         </div>

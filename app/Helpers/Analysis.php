@@ -51,7 +51,7 @@ class Analysis
             for ($i=$rsi_period*2-1;$i<=max(array_keys($rsi));$i++){
                 $max[$i] = max(array_slice($rsi, $i-($rsi_period*2-1), $rsi_period));
                 $min[$i] = min(array_slice($rsi, $i-($rsi_period*2-1), $rsi_period));
-                $stoch_rsi[$i] = ($rsi[$i]-$min[$i])/($max[$i]-$min[$i])*100;
+                $stoch_rsi[$i] = ($max[$i]-$min[$i]) ? ($rsi[$i]-$min[$i])/($max[$i]-$min[$i])*100 : 0;
             }
             for ($i=$rsi_period*2+$stoch_period-2;$i<=max(array_keys($rsi));$i++) {
                 $a = array_slice($stoch_rsi, $i-($rsi_period*2+$stoch_period-2), $stoch_period);

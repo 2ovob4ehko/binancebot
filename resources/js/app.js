@@ -32,6 +32,15 @@ $(document).ready(function(){
             $list.addClass('opened')
         }
     })
+    $('.upload_db').click(function(){
+        axios.get('/uploadCSVFromBinance/'+$(this).data('market'))
+            .then(function (response) {
+                location.reload()
+            })
+            .catch(function (error) {
+                console.log(error);
+            })
+    })
 
     $('.candleChart').each(function(index){
         const $parent = $(this).closest('.analysis_list_wrapper')
@@ -40,6 +49,7 @@ $(document).ready(function(){
         const candles = data.map(d => {
             return d.c.slice(0,5)
         })
+        // console.log('candles',candles)
         const markData = data.map(d => {
             if(d.m === 'buy'){
                 return {
@@ -92,6 +102,12 @@ $(document).ready(function(){
             },
             annotations: {
                 xaxis: markData
+            },
+            markers: {
+                size: 0
+            },
+            dataLabels: {
+                enabled: false,
             }
         }
 
@@ -155,6 +171,9 @@ $(document).ready(function(){
                         borderColor: 'blue',
                     }
                 ]
+            },
+            markers: {
+                size: 0
             }
         }
 
@@ -224,6 +243,9 @@ $(document).ready(function(){
                         borderColor: 'blue',
                     }
                 ]
+            },
+            markers: {
+                size: 0
             }
         }
 

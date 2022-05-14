@@ -20,6 +20,7 @@ Route::group(['middleware' => ['auth']], function () {
     Route::post('/market', [\App\Http\Controllers\MarketController::class, 'save']);
     Route::delete('/market/{id}', [\App\Http\Controllers\MarketController::class, 'delete']);
     Route::post('/market_analysis/{id}', [\App\Http\Controllers\MarketController::class, 'analysis']);
+    Route::get('/uploadCSVFromBinance/{market}', [\App\Http\Controllers\MarketController::class, 'uploadCSVFromBinance']);
 });
 
 Auth::routes([
@@ -29,12 +30,12 @@ Auth::routes([
 ]);
 
 Route::get('/test', function(){
-//    $candles = \App\Http\Controllers\MainController::multilimitQueryS('WTCUSDT','1d',1000);
-//    $analysis = new Analysis();
-//    $closed = array_map(function($el){return $el[4];}, $candles);
-//    $rsi = $analysis->rsi($closed,14);
-//    echo '<pre>';
-//    var_dump($closed);
-//    echo '</pre>';
+    $candles = \App\Http\Controllers\MarketController::multilimitQueryS('WTCUSDT','1m',10);
+    $analysis = new Analysis();
+    $closed = array_map(function($el){return $el[4];}, $candles);
+    $rsi = $analysis->rsi($closed,14);
+    echo '<pre>';
+    var_dump($rsi);
+    echo '</pre>';
 });
 //Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');

@@ -3,11 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\Analysis;
+use App\Jobs\UploadCSVFromBinance;
 use App\Models\Market;
 use App\Models\Simulation;
 use Auth;
+use Carbon\CarbonPeriod;
 use DB;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
+use ZanySoft\Zip\Zip;
 
 class MarketController extends Controller
 {
@@ -18,7 +23,7 @@ class MarketController extends Controller
         }else{
             $market = new Market();
         }
-        $candle_intervals = ['1m','3m','5m','15m','30m','1h','2h','4h','6h','8h','12h','1d','3d','1w','1M'];
+        $candle_intervals = ['1m','3m','5m','15m','30m','1h','2h','4h','6h','8h','12h','1d'];
         return view('market',[
             'market' => $market,
             'candle_intervals' => $candle_intervals
@@ -27,6 +32,7 @@ class MarketController extends Controller
 
     public function save(Request $request)
     {
+        $name = strtoupper(preg_replace('/[^\w]/', '', $request->name));
         if($request->has('id')){
             Market::where('id',$request->id)->update([
                 'name' => $request->name,
@@ -72,11 +78,12 @@ class MarketController extends Controller
 
     public function analysis($id, Request $request)
     {
+        set_time_limit(1000);
         $market = Market::where('id',$id)->first();
         $settings = $market->settings;
         $analysis = new Analysis();
 
-        $candles = $this->multilimitQuery($market->name,$settings['candle'],$market->limit());
+        $candles = $this->multilimitCSVQuery($market->name,$settings['candle'],$settings['period']);
 //        $candles = $analysis->fakeData();
         $closed = array_map(function($el){return floatval($el[4]);}, $candles);
 
@@ -137,13 +144,15 @@ class MarketController extends Controller
                 $stoch_rsi_logic = '';
                 $sr = $stoch_rsi['stoch_rsi'];
                 $ssr = $stoch_rsi['sma_stoch_rsi'];
-                if($sr[$i] > 80 && $ssr[$i] > 80){
-                    if($sr[$i-1] >= $sr[$i] && $ssr[$i-1] >= $ssr[$i] && $sr[$i-1] >= $ssr[$i-1] && $sr[$i] <= $ssr[$i]){
-                        $stoch_rsi_logic = 'down';
-                    }
-                }elseif($sr[$i] < 20 && $ssr[$i] < 20){
-                    if($sr[$i-1] <= $sr[$i] && $ssr[$i-1] <= $ssr[$i] && $sr[$i-1] <= $ssr[$i-1] && $sr[$i] >= $ssr[$i]){
-                        $stoch_rsi_logic = 'up';
+                if(array_key_exists($i-1,$ssr)){
+                    if($sr[$i] > 80 && $ssr[$i] > 80){
+                        if($sr[$i-1] >= $sr[$i] && $ssr[$i-1] >= $ssr[$i] && $sr[$i-1] >= $ssr[$i-1] && $sr[$i] <= $ssr[$i]){
+                            $stoch_rsi_logic = 'down';
+                        }
+                    }elseif($sr[$i] < 20 && $ssr[$i] < 20){
+                        if($sr[$i-1] <= $sr[$i] && $ssr[$i-1] <= $ssr[$i] && $sr[$i-1] <= $ssr[$i-1] && $sr[$i] >= $ssr[$i]){
+                            $stoch_rsi_logic = 'up';
+                        }
                     }
                 }
             }
@@ -204,7 +213,7 @@ class MarketController extends Controller
 
     public static function multilimitQueryS($symbol,$interval,$limit){
         $self = new MarketController();
-        return $self->multilimitQuery($symbol,$interval,$limit);
+        return $self->multilimitCSVQuery($symbol,$interval,$limit);
     }
     private function multilimitQuery($symbol,$interval,$limit)
     {
@@ -227,6 +236,41 @@ class MarketController extends Controller
             return array_slice($item,0,7);
         },$candles);
         return $candles;
+    }
+
+    private function multilimitCSVQuery($symbol,$interval,$days)
+    {
+        dispatch(new UploadCSVFromBinance($symbol));
+        $candles = [];
+        $times = 0;
+        $periods = array_reverse(CarbonPeriod::create('2020-01-01', 'yesterday')->toArray());
+        foreach ($periods as $dt){
+            $date = $dt->toDateString();
+            $filename = $symbol.'/'.$interval.'/'.$symbol.'-'.$interval.'-'.$date.'.csv';
+            if(!Storage::disk('local')->exists($filename)) continue;
+            $times++;
+            if($times > $days) break;
+            $csv = Storage::get($filename);
+            $lines = array_filter(explode("\n",$csv));
+            $data = array_map(function($el){
+                $res = explode(',',$el);
+                $res[0] = intval($res[0]);
+                $res[6] = intval($res[6]);
+                return $res;
+            },$lines);
+            $candles = array_merge($data,$candles);
+        }
+        $candles = array_map(function($item){
+            return array_slice($item,0,7);
+        },$candles);
+        return $candles;
+    }
+
+    public function uploadCSVFromBinance($market)
+    {
+        Market::where('name',$market)->update(['upload_status' => 'uploading']);
+        dispatch(new UploadCSVFromBinance($market));
+        return ["success" => true, "message" => 'База маркету почала завантажуватися'];
     }
 
 }

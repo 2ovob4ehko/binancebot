@@ -101,11 +101,11 @@
                                     <hr/>
                                     <div class="row mx-0 mb-3">
                                         <div class="col-12 p-1">
-                                            <button class="btn btn-success btn-sm" type="submit"><i class="fa-solid fa-floppy-disk"></i></button>
+                                            <button class="btn btn-success btn-sm" type="submit" title="Зберегти"><i class="fa-solid fa-floppy-disk"></i></button>
                                             @if($market->settings)
-                                            <button class="btn btn-primary btn-sm startMarketAnalysis" data-id="{{$market->id}}" type="button"><i class="fa-solid fa-play"></i></button>
-                                            <button class="btn btn-secondary btn-sm toggleAnalysis" type="button"><i class="fa-solid fa-chart-column"></i></button>
-                                            <button class="btn btn-danger btn-sm delete" data-id="{{$market->id}}" type="button"><i class="fa-solid fa-trash-can"></i></button>
+                                            <button class="btn btn-primary btn-sm startMarketAnalysis" title="Запустити симуляцію" data-id="{{$market->id}}" type="button"><i class="fa-solid fa-play"></i></button>
+                                            <button class="btn btn-secondary btn-sm toggleAnalysis" title="Показати результат" type="button"><i class="fa-solid fa-chart-column"></i></button>
+                                            <button class="btn btn-danger btn-sm delete" title="Видалити" data-id="{{$market->id}}" type="button"><i class="fa-solid fa-trash-can"></i></button>
                                             @endif
                                         </div>
                                     </div>
