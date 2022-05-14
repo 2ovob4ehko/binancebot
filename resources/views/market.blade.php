@@ -54,6 +54,14 @@
                                                 </div>
                                             </div>
                                         </div>
+                                        <div class="col-12 col-sm-6 col-md-4 p-1 d-flex align-items-center">
+                                            <div class="d-flex align-items-center">
+                                                <label class="mx-2" for="is_online_{{$market->id}}">Онлай торгівля</label>
+                                                <div class="col">
+                                                    <input type="checkbox" id="is_online_{{$market->id}}" name="is_online" value="yes" class="form-check-input" {{$market->is_online ? 'checked' : ''}}>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                     <hr/>
                                     <div class="row mx-0">

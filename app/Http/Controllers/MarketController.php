@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\Analysis;
+use App\Helpers\Intervals;
 use App\Jobs\UploadCSVFromBinance;
 use App\Models\Market;
 use App\Models\Simulation;
@@ -23,7 +24,7 @@ class MarketController extends Controller
         }else{
             $market = new Market();
         }
-        $candle_intervals = ['1m','3m','5m','15m','30m','1h','2h','4h','6h','8h','12h','1d'];
+        $candle_intervals = Intervals::titles();
         return view('market',[
             'market' => $market,
             'candle_intervals' => $candle_intervals
@@ -34,6 +35,15 @@ class MarketController extends Controller
     {
         $name = strtoupper(preg_replace('/[^\w]/', '', $request->name));
         if($request->has('id')){
+            if($request->has('is_online')){
+                Simulation::where('market_id',$request->id)->delete();
+                Market::where('id',$request->id)->update([
+                    'data' => '',
+                    'rsi' => '',
+                    'result' => '',
+                    'stoch_rsi' => ''
+                ]);
+            }
             Market::where('id',$request->id)->update([
                 'name' => $request->name,
                 'settings' => [
@@ -45,7 +55,8 @@ class MarketController extends Controller
                     'rsi_max' => $request->rsi_max,
                     'profit_limit' => $request->profit_limit,
                     'start_balance' => $request->start_balance,
-                ]
+                ],
+                'is_online' => $request->has('is_online')
             ]);
             $id = $request->id;
         }else{
@@ -64,6 +75,7 @@ class MarketController extends Controller
                 'data' => '',
                 'rsi' => '',
                 'result' => '',
+                'is_online' => $request->has('is_online')
             ]);
             $id = $market->id;
         }
@@ -80,6 +92,7 @@ class MarketController extends Controller
     {
         set_time_limit(1000);
         $market = Market::where('id',$id)->first();
+        if($market->is_online) return ["success" => false, "message" => 'Онлайн маркет не може проходити аналіз'];;
         $settings = $market->settings;
         $analysis = new Analysis();
 
@@ -215,7 +228,7 @@ class MarketController extends Controller
         $self = new MarketController();
         return $self->multilimitCSVQuery($symbol,$interval,$limit);
     }
-    private function multilimitQuery($symbol,$interval,$limit)
+    public static function multilimitQuery($symbol,$interval,$limit)
     {
         $times = intval($limit / 1000);
         $rest = $limit % 1000;
@@ -272,5 +285,4 @@ class MarketController extends Controller
         dispatch(new UploadCSVFromBinance($market));
         return ["success" => true, "message" => 'База маркету почала завантажуватися'];
     }
-
 }
