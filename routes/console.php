@@ -20,34 +20,46 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Artisan::command('trade', function(){
-    $markets = TradeController::getMarketsForTrade();
-    $client = new WebSocket\Client("wss://stream.binance.com:9443/ws",[
-        'timeout' => 600
-    ]);
-    $subs = [];
-    foreach ($markets as $key => $market){
-//        $subs[] = mb_strtolower($key).'@trade';
-        $subs[] = mb_strtolower($key).'@kline_'.$market['settings']['candle'];
-    }
-    $client->send('{
-      "method": "SUBSCRIBE",
-      "params": '.json_encode($subs).',
-      "id": 1
-    }');
+    $restart_time = 0;
+    $markets = [];
     while (true) {
+        if((time() - $restart_time) / 60 > 10){
+            $restart_time = time();
+            $client = new WebSocket\Client("wss://stream.binance.com:9443/ws",[
+                'timeout' => 600
+            ]);
+            $new_markets = TradeController::getMarketsForTrade();
+            $subs = [];
+            foreach ($new_markets as $key => $market){
+                if(array_key_exists($key,$markets)){
+                    $new_markets[$key] = $markets[$key];
+                }
+//        $subs[] = mb_strtolower($key).'@trade';
+                $subs[] = mb_strtolower($key).'@kline_'.$market['settings']['candle'];
+            }
+            $markets = $new_markets;
+            $this->info('subs: '.json_encode($subs));
+            $client->send('{
+              "method": "SUBSCRIBE",
+              "params": '.json_encode($subs).',
+              "id": 1
+            }');
+        }
         try {
 //            $client->pong();
-            $message = $client->receive();
-            $data = json_decode($message, true);
-            if(array_key_exists('s',$data)){
+            if($subs) {
+                $message = $client->receive();
+                $data = json_decode($message, true);
+                if ($data && array_key_exists('s', $data)) {
 //                if($data['e'] == 'trade'){
 //                    $markets[$data['s']] = TradeController::addNewPrice($markets[$data['s']],$data);
 //                }
-                if($data['e'] == 'kline'){
-                    $markets[$data['s']] = TradeController::addNewCandle($markets[$data['s']],$data['k']);
+                    if ($data['e'] == 'kline') {
+                        $markets[$data['s']] = TradeController::addNewCandle($markets[$data['s']], $data['k']);
+                    }
                 }
+                $this->info('message: ' . $message);
             }
-            $this->info('message: '.$message);
         } catch (\WebSocket\ConnectionException $e) {
             $this->info('error: '.$e);
         }
