@@ -26,7 +26,8 @@ Artisan::command('trade', function(){
     ]);
     $subs = [];
     foreach ($markets as $key => $market){
-        $subs[] = mb_strtolower($key).'@trade';
+//        $subs[] = mb_strtolower($key).'@trade';
+        $subs[] = mb_strtolower($key).'@kline_'.$market['settings']['candle'];
     }
     $client->send('{
       "method": "SUBSCRIBE",
@@ -37,9 +38,14 @@ Artisan::command('trade', function(){
         try {
 //            $client->pong();
             $message = $client->receive();
-            $data = json_decode($message);
+            $data = json_decode($message, true);
             if(array_key_exists('s',$data)){
-                TradeController::addNewPrice($markets[$data['s']],$data);
+//                if($data['e'] == 'trade'){
+//                    $markets[$data['s']] = TradeController::addNewPrice($markets[$data['s']],$data);
+//                }
+                if($data['e'] == 'kline'){
+                    $markets[$data['s']] = TradeController::addNewCandle($markets[$data['s']],$data['k']);
+                }
             }
             $this->info('message: '.$message);
         } catch (\WebSocket\ConnectionException $e) {

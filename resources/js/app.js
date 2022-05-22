@@ -158,7 +158,9 @@ $(document).ready(function(){
                 forceNiceScale: true,
                 labels: {
                     minWidth: 40
-                }
+                },
+                min: 0,
+                max: 90
             },
             annotations: {
                 yaxis: [
@@ -230,7 +232,9 @@ $(document).ready(function(){
                 forceNiceScale: true,
                 labels: {
                     minWidth: 40
-                }
+                },
+                min: 0,
+                max: 90
             },
             annotations: {
                 yaxis: [

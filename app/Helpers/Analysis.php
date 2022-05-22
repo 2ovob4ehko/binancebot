@@ -72,6 +72,7 @@ class Analysis
 // Close
 // Volume
 // Close time
+// -----------------
 // Quote asset volume
 // Number of trades
 // Taker buy base asset volume

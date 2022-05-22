@@ -119,7 +119,7 @@
                                     </div>
                                 </form>
                                 @if($market->settings)
-                                <div class="analysis_list_wrapper"
+                                <div class="analysis_list_wrapper opened"
                                      data-group="market-{{$market->id}}"
                                      data-min="{{$market->settings['rsi_min']}}"
                                      data-max="{{$market->settings['rsi_max']}}"
