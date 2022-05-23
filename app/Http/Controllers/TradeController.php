@@ -150,7 +150,7 @@ class TradeController extends Controller
             array_push($market_data,['c' => $data[$last_closed_index], 'm' => $mark]);
             $market_rsi = $market_db->rsi ?? [];
             array_push($market_rsi,$rsi[$last_closed_index]);
-            $market_stoch_rsi = $market_db->stoch_rsi ?? [];
+            $market_stoch_rsi = $market_db->stoch_rsi ?? ['stoch_rsi' => [], 'sma_stoch_rsi' => []];
             if(!empty($stoch_rsi)) array_push($market_stoch_rsi['stoch_rsi'],$stoch_rsi['stoch_rsi'][$last_closed_index]);
             if(!empty($stoch_rsi)) array_push($market_stoch_rsi['sma_stoch_rsi'],$stoch_rsi['sma_stoch_rsi'][$last_closed_index]);
             $market_db->update([
@@ -267,7 +267,7 @@ class TradeController extends Controller
             array_push($market_data,['c' => $data[$last_closed_index], 'm' => $mark]);
             $market_rsi = $market_db->rsi ?? [];
             array_push($market_rsi,$rsi[$last_closed_index]);
-            $market_stoch_rsi = $market_db->stoch_rsi ?? [];
+            $market_stoch_rsi = $market_db->stoch_rsi ?? ['stoch_rsi' => [], 'sma_stoch_rsi' => []];
             if(!empty($stoch_rsi)) array_push($market_stoch_rsi['stoch_rsi'],$stoch_rsi['stoch_rsi'][$last_closed_index]);
             if(!empty($stoch_rsi)) array_push($market_stoch_rsi['sma_stoch_rsi'],$stoch_rsi['sma_stoch_rsi'][$last_closed_index]);
             $market_db->update([
