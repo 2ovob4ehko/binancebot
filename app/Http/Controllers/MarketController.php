@@ -41,7 +41,7 @@ class MarketController extends Controller
                     'data' => [],
                     'rsi' => [],
                     'result' => '',
-                    'stoch_rsi' => []
+                    'stoch_rsi' => ['stoch_rsi' => [], 'sma_stoch_rsi' => []]
                 ]);
             }
             Market::where('id',$request->id)->update([
