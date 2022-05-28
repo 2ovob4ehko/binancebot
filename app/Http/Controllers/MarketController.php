@@ -38,10 +38,10 @@ class MarketController extends Controller
             if($request->has('is_online')){
                 Simulation::where('market_id',$request->id)->delete();
                 Market::where('id',$request->id)->update([
-                    'data' => '',
-                    'rsi' => '',
+                    'data' => [],
+                    'rsi' => [],
                     'result' => '',
-                    'stoch_rsi' => ''
+                    'stoch_rsi' => []
                 ]);
             }
             Market::where('id',$request->id)->update([
@@ -72,8 +72,8 @@ class MarketController extends Controller
                     'profit_limit' => $request->profit_limit,
                     'start_balance' => $request->start_balance,
                 ],
-                'data' => '',
-                'rsi' => '',
+                'data' => [],
+                'rsi' => [],
                 'result' => '',
                 'is_online' => $request->has('is_online')
             ]);
