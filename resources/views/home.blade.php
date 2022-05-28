@@ -40,6 +40,9 @@
                                             @endif
                                         </div>
                                         <div class="ms-auto">
+                                            @if($market->is_online)
+                                                <i class="fa-solid fa-money-bill-trend-up"></i>
+                                            @endif
                                             @if($market->upload_status === 'uploading')
                                                 <span class="badge bg-secondary">База завантажується</span>
                                             @elseif($market->upload_status === 'uploaded')

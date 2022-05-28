@@ -23,7 +23,7 @@ Artisan::command('trade', function(){
     $restart_time = 0;
     $markets = [];
     while (true) {
-        if((time() - $restart_time) / 60 > 10){
+        if((time() - $restart_time) / 60 > 10){ //every 10 minutes
             $restart_time = time();
             $client = new WebSocket\Client("wss://stream.binance.com:9443/ws",[
                 'timeout' => 600
@@ -35,7 +35,7 @@ Artisan::command('trade', function(){
                     $new_markets[$key] = $markets[$key];
                 }
 //        $subs[] = mb_strtolower($key).'@trade';
-                $subs[] = mb_strtolower($key).'@kline_'.$market['settings']['candle'];
+                $subs[] = mb_strtolower($market['name']).'@kline_'.$market['settings']['candle'];
             }
             $markets = $new_markets;
             $this->info('subs: '.json_encode($subs));
@@ -51,12 +51,19 @@ Artisan::command('trade', function(){
                 $message = $client->receive();
                 $data = json_decode($message, true);
                 if ($data && array_key_exists('s', $data)) {
-//                if($data['e'] == 'trade'){
-//                    $markets[$data['s']] = TradeController::addNewPrice($markets[$data['s']],$data);
-//                }
-                    if ($data['e'] == 'kline') {
-                        $markets[$data['s']] = TradeController::addNewCandle($markets[$data['s']], $data['k']);
+                    $proc_start = microtime(true);
+                    $selected_markets = array_filter($markets,function($market) use ($data){
+                        return $market['name'] == $data['s'];
+                    });
+                    foreach ($selected_markets as $key => $selected){
+//                      if($data['e'] == 'trade'){
+//                         $markets[$key] = TradeController::addNewPrice($markets[$key],$data);
+//                      }
+                        if ($data['e'] == 'kline') {
+                            $markets[$key] = TradeController::addNewCandle($markets[$key], $data['k']);
+                        }
                     }
+                    $this->info('proc time: ' . (microtime(true) - $proc_start)*1000);
                 }
                 $this->info('message: ' . $message);
             }

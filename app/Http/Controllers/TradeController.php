@@ -17,8 +17,8 @@ class TradeController extends Controller
         if($markets->count() > 0){
             foreach ($markets as $market){
                 $settings = $market->settings;
-                $candles = MarketController::multilimitQuery($market->name,$settings['candle'],100);
-                $output[$market->name] = [
+                $candles = MarketController::multilimitQuery($market->name,$settings['candle'],50);
+                $output[$market->id] = [
                     'id' => $market->id,
                     'name' => $market->name,
                     'settings' => $market->settings,
@@ -166,6 +166,7 @@ class TradeController extends Controller
     public static function addNewCandle($market,$trade)
     {
         $settings = $market['settings'];
+        if($settings['candle'] !== $trade['i']) return $market;
         $data = $market['data'];
         $last_index = count($data)-1;
         $last_closed_index = count($data)-2;
