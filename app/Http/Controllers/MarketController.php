@@ -7,19 +7,18 @@ use App\Helpers\Intervals;
 use App\Jobs\UploadCSVFromBinance;
 use App\Models\Market;
 use App\Models\Simulation;
-use Auth;
 use Carbon\CarbonPeriod;
 use DB;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
-use ZanySoft\Zip\Zip;
 
 class MarketController extends Controller
 {
     public function show($id,Request $request)
     {
         if($id){
+            if(!Auth::user()->markets->contains($id)) return redirect('/');
             $market = Market::findOrFail($id);
         }else{
             $market = new Market();
@@ -35,6 +34,7 @@ class MarketController extends Controller
     {
         $name = strtoupper(preg_replace('/[^\w]/', '', $request->name));
         if($request->has('id')){
+            if(!Auth::user()->markets->contains($request->id)) return redirect('/');
             if($request->has('is_online')){
                 Simulation::where('market_id',$request->id)->delete();
                 Market::where('id',$request->id)->update([
@@ -61,6 +61,7 @@ class MarketController extends Controller
             $id = $request->id;
         }else{
             $market = Market::create([
+                'user_id' => Auth::user()->id,
                 'name' => $request->name,
                 'settings' => [
                     'candle' => $request->candle,
@@ -74,6 +75,7 @@ class MarketController extends Controller
                 ],
                 'data' => [],
                 'rsi' => [],
+                'stoch_rsi' => ['stoch_rsi' => [], 'sma_stoch_rsi' => []],
                 'result' => '',
                 'is_online' => $request->has('is_online')
             ]);
@@ -84,6 +86,7 @@ class MarketController extends Controller
 
     public function delete($id, Request $request)
     {
+        if(!Auth::user()->markets->contains($id)) return redirect('/');
         Market::where('id',$id)->delete();
         return ["success" => true, "message" => 'Маркет видалено'];
     }

@@ -40,6 +40,12 @@ class Analysis
         return $rsi;
     }
 
+    /**
+     * @param $rsi
+     * @param $rsi_period
+     * @param $stoch_period
+     * @return array[]
+     */
     public function stoch_rsi($rsi, $rsi_period, $stoch_period): array
     {
         $stoch_rsi = [];
@@ -62,6 +68,54 @@ class Analysis
         return [
             'stoch_rsi' => $stoch_rsi,
             'sma_stoch_rsi' => $sma_stoch_rsi
+        ];
+    }
+
+    /**
+     * @param $data
+     * @param $period1
+     * @param $period2
+     * @param $period3
+     * @return array[]
+     */
+    public function macd($data,$period1,$period2,$period3)
+    {
+        $ema1 = [];
+        $ema2 = [];
+        $macd = [];
+        $serial = [];
+        $histogram = [];
+
+        $a = array_slice($data, 0, $period1);
+        $ema1[$period1-1] = array_sum($a)/count($a);
+
+        for ($i=$period1; $i < count($data); $i++) {
+            $ema1[$i] = (($data[$i]-$ema1[$i-1])*(2/($period1+1)))+$ema1[$i-1];
+        }
+
+        $a = array_slice($data, 0, $period2);
+        $ema2[$period2-1] = array_sum($a)/count($a);
+        $macd[$period2-1] = $ema1[$period2-1]-$ema2[$period2-1];
+
+        for ($i=$period2; $i < count($data); $i++) {
+            $ema2[$i] = (($data[$i]-$ema2[$i-1])*(2/($period2+1)))+$ema2[$i-1];
+            $macd[$i] = $ema1[$i]-$ema2[$i];
+        }
+
+        $a = array_slice($macd, 0, $period3);
+        $serial[$period2+$period3-2] = array_sum($a)/count($a);
+        $histogram[$period2+$period3-2] = $macd[$period2+$period3-2]-$serial[$period2+$period3-2];
+
+        for ($i=$period2+$period3-2; $i < count($data); $i++) {
+            $serial[$i] = (($macd[$i]-$serial[$i-1])*(2/($period3+1)))+$serial[$i-1];
+            $histogram[$i] = $macd[$i]-$serial[$i];
+        }
+
+
+        return [
+            'macd' => $macd,
+            'serial' => $serial,
+            'histogram' => $histogram
         ];
     }
 

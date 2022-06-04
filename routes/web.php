@@ -24,18 +24,12 @@ Route::group(['middleware' => ['auth']], function () {
 });
 
 Auth::routes([
-    'register' => false, // Registration Routes...
+    'register' => true, // Registration Routes...
     'reset' => true, // Password Reset Routes...
     'verify' => true,
 ]);
 
 Route::get('/test', function(){
-    $candles = \App\Http\Controllers\MarketController::multilimitQueryS('WTCUSDT','1m',10);
-    $analysis = new Analysis();
-    $closed = array_map(function($el){return $el[4];}, $candles);
-    $rsi = $analysis->rsi($closed,14);
-    echo '<pre>';
-    var_dump($rsi);
-    echo '</pre>';
+
 });
 //Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');

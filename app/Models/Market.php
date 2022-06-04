@@ -16,6 +16,11 @@ class Market extends Model
         'stoch_rsi' => 'array'
     ];
 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function simulations(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(Simulation::class);

@@ -186,7 +186,13 @@ class TradeController extends Controller
 
         $analysis = new Analysis();
         $closed = array_map(function($el){return floatval($el[4]);}, $data);
-        $rsi = $analysis->rsi($closed,$settings['rsi_period']);
+        $is_rsi = false;
+        if(!empty($settings['rsi_period'])) {
+            $rsi = $analysis->rsi($closed, $settings['rsi_period']);
+            $is_rsi = true;
+        }else{
+            $rsi = [];
+        }
         $is_stoch = false;
         if(!empty($settings['stoch_rsi_period'])){
             $stoch_rsi = $analysis->stoch_rsi($rsi,$settings['rsi_period'],$settings['stoch_rsi_period']);
@@ -217,7 +223,7 @@ class TradeController extends Controller
         }
         $close = $trade['c'];
 
-        if($status == 'deposit' && $rsi[$i] <= $settings['rsi_min'] &&
+        if($status == 'deposit' && ($is_rsi ? $rsi[$i] <= $settings['rsi_min'] : true) &&
             ($is_stoch ? $stoch_rsi_logic === 'up' : true)){
             $status = 'bought';
             $old_balance = $balance;
@@ -229,14 +235,14 @@ class TradeController extends Controller
                 'value' => $old_balance,
                 'result' => $balance,
                 'price' => $close,
-                'rsi' => $rsi[$i],
+                'rsi' => $is_rsi ? $rsi[$i] : 0,
                 'stoch_rsi' => $is_stoch ? $stoch_rsi['stoch_rsi'][$i] : 0,
                 'time' => date("Y-m-d H:i:s",intval($trade['T'])/1000)
             ]);
             $market['mark'] = 'buy';
         }elseif($status == 'bought'){
             $is_profit = floatval($settings['profit_limit']) == 0.0 ? false : $balance * $close > $old_balance * (1 + floatval($settings['profit_limit']));
-            if((intval($settings['rsi_max']) > 0 && $rsi[$i] >= $settings['rsi_max'] &&
+            if((intval($settings['rsi_max']) > 0 && ($is_rsi ? $rsi[$i] >= $settings['rsi_max'] : true) &&
                     ($is_stoch ? $stoch_rsi_logic === 'down' : true)) || $is_profit){
                 $status = 'deposit';
                 $old_balance = $balance;
@@ -248,7 +254,7 @@ class TradeController extends Controller
                     'value' => $old_balance,
                     'result' => $balance,
                     'price' => $close,
-                    'rsi' => $rsi[$i],
+                    'rsi' => $is_rsi ? $rsi[$i] : 0,
                     'stoch_rsi' => $is_stoch ? $stoch_rsi['stoch_rsi'][$i] : 0,
                     'time' => date("Y-m-d H:i:s",intval($trade['T'])/1000)
                 ]);
@@ -267,7 +273,7 @@ class TradeController extends Controller
             $market_data = $market_db->data ?? [];
             array_push($market_data,['c' => $data[$last_closed_index], 'm' => $mark]);
             $market_rsi = $market_db->rsi ?? [];
-            array_push($market_rsi,$rsi[$last_closed_index]);
+            if(!empty($rsi)) array_push($market_rsi,$rsi[$last_closed_index]);
             $market_stoch_rsi = $market_db->stoch_rsi ?? ['stoch_rsi' => [], 'sma_stoch_rsi' => []];
             if(!empty($stoch_rsi)) array_push($market_stoch_rsi['stoch_rsi'],$stoch_rsi['stoch_rsi'][$last_closed_index]);
             if(!empty($stoch_rsi)) array_push($market_stoch_rsi['sma_stoch_rsi'],$stoch_rsi['sma_stoch_rsi'][$last_closed_index]);

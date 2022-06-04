@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Helpers\Intervals;
 use App\Models\Market;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class HomeController extends Controller
 {
@@ -25,11 +26,9 @@ class HomeController extends Controller
      */
     public function index()
     {
-        $markets = Market::all();
-        $candle_intervals = Intervals::titles();
+        $markets = Auth::user()->markets;
         return view('home',[
-            'markets' => $markets,
-            'candle_intervals' => $candle_intervals
+            'markets' => $markets
         ]);
     }
 }

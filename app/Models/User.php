@@ -41,4 +41,14 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+
+    public function settings(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Setting::class);
+    }
+
+    public function markets(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Market::class);
+    }
 }
