@@ -51,4 +51,11 @@ class User extends Authenticatable
     {
         return $this->hasMany(Market::class);
     }
+
+    public function setting($name)
+    {
+        return $this->settings()
+            ->where('name',$name)
+            ->first();
+    }
 }
