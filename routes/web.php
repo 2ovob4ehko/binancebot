@@ -3,6 +3,8 @@
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MarketController;
 use App\Http\Controllers\SettingController;
+use App\Models\User;
+use Binance\API;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -34,6 +36,24 @@ Auth::routes([
 ]);
 
 Route::get('/test', function(){
-
+    $user = User::find(1);
+    $api = new API(
+        $user->setting('api_key')->value ?? '',
+        $user->setting('secret_key')->value ?? ''
+    );
+    // $api->commissionFee('BTCUAH')[0]['takerCommission'];
+    // array_filter($api->account()['balances'],function($item){return $item['asset'] === 'BTC';});
+    // $api->marketQuoteBuyTest('BTCUSDT',10); //marketQuoteBuy
+    // $api->marketSellTest('BTCUSDT',0.0004); //marketSell
+    try{
+//        echo '<pre>';
+//        var_dump($api->marketQuoteBuyTest('BTCUAH',100));
+//        echo '</pre>';
+//        return response()->json($api->account());
+    }catch (Exception $e){
+        echo '<pre>';
+        var_dump($e->getMessage());
+        echo '</pre>';
+    }
 });
 //Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');

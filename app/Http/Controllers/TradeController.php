@@ -7,6 +7,7 @@ use App\Helpers\Analysis;
 use App\Helpers\Intervals;
 use App\Models\Market;
 use App\Models\Simulation;
+use Binance\API;
 
 class TradeController extends Controller
 {
@@ -18,13 +19,21 @@ class TradeController extends Controller
             foreach ($markets as $market){
                 $settings = $market->settings;
                 $candles = MarketController::multilimitQuery($market->name,$settings['candle'],50);
+
+                $user = $market->user;
+                $api_key = $user->setting('api_key')->value ?? '';
+                $secret_key = $user->setting('secret_key')->value ?? '';
+
                 $output[$market->id] = [
                     'id' => $market->id,
                     'name' => $market->name,
                     'settings' => $market->settings,
                     'data' => $candles,
-                    'mark' => false
+                    'mark' => false,
                 ];
+                if($api_key && $secret_key){
+                    $output[$market->id]['api'] = new API($api_key, $secret_key);
+                }
             }
         }
         return $output;
