@@ -53,7 +53,10 @@
                             @endif
                         @else
                             <li class="nav-item">
-                                <a class="nav-link" href="{{ route('settings') }}">{{__('Settings')}}</a>
+                                <a class="nav-link {{ (request()->is('trade_list')) ? 'active' : '' }}" href="{{ route('trade_list') }}">{{__('Trade')}}</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ (request()->is('settings')) ? 'active' : '' }}" href="{{ route('settings') }}">{{__('Settings')}}</a>
                             </li>
                             <li class="nav-item dropdown">
                                 <a id="navbarDropdown" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" v-pre>

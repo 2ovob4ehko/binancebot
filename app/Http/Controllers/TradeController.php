@@ -14,7 +14,7 @@ class TradeController extends Controller
     public static function getMarketsForTrade()
     {
         $output = [];
-        $markets = Market::where('is_online',1)->get();
+        $markets = Market::where('is_online',1)->orWhere('is_trade',1)->get();
         if($markets->count() > 0){
             foreach ($markets as $market){
                 $settings = $market->settings;
@@ -30,10 +30,9 @@ class TradeController extends Controller
                     'settings' => $market->settings,
                     'data' => $candles,
                     'mark' => false,
+                    'is_trade' => $market->is_trade,
+                    'api' => new API($api_key, $secret_key)
                 ];
-                if($api_key && $secret_key){
-                    $output[$market->id]['api'] = new API($api_key, $secret_key);
-                }
             }
         }
         return $output;
@@ -172,13 +171,14 @@ class TradeController extends Controller
         return $market;
     }
 
-    public static function addNewCandle($market,$trade)
+    public static function addNewCandle($market,$trade,$console)
     {
         $settings = $market['settings'];
         if($settings['candle'] !== $trade['i']) return $market;
         $data = $market['data'];
         $last_index = count($data)-1;
         $last_closed_index = count($data)-2;
+        $commission = array_key_exists('commission', $settings) ? $settings['commission'] : 0;
 
         $next = ($data[$last_index][0] === $trade['t']) ? 0 : 1;
         $data[$last_index+$next][0] = $trade['t'];
@@ -237,7 +237,26 @@ class TradeController extends Controller
             $status = 'bought';
             $old_balance = $balance;
             // TODO: зробити скорочення до 0.000000
-            $balance = $close ? floor($balance / $close * 1000000000) / 1000000000 : $balance;
+            if($market['is_trade']){
+                try{
+                    $res = $market['api']->marketQuoteBuy($market['name'],$balance);
+                    $console->info('market '.$market['id'].' buy: ' . json_encode($res));
+                    $balance = 0;
+                    $commission_sum = 0;
+                    foreach ($res['fills'] as $fill){
+                        $balance += floatval($fill['qty']);
+                        $commission_sum += floatval($fill['commission']);
+                    }
+                    $close = floor($old_balance / $balance * 100) / 100;
+                    $balance = $balance - $commission_sum;
+                }catch (\Exception $e){
+                    $balance = $close ? $balance / $close : $balance;
+                    $balance = floor($balance * (1 - $commission) * 1000000000) / 1000000000;
+                }
+            }else{
+                $balance = $close ? $balance / $close : $balance;
+                $balance = floor($balance * (1 - $commission) * 1000000000) / 1000000000;
+            }
             Simulation::create([
                 'market_id' => $market['id'],
                 'action' => 'buy',
@@ -256,7 +275,26 @@ class TradeController extends Controller
                 $status = 'deposit';
                 $old_balance = $balance;
                 // TODO: зробити скорочення до 0.00
-                $balance = floor($balance * $close * 100) / 100;
+                if($market['is_trade']){
+                    try{
+                        $res = $market['api']->marketSell($market['name'],$balance);
+                        $console->info('market '.$market['id'].' sell: ' . json_encode($res));
+                        $balance = 0;
+                        $commission_sum = 0;
+                        foreach ($res['fills'] as $fill){
+                            $balance += floatval($fill['qty']) * floatval($fill['price']);
+                            $commission_sum += floatval($fill['commission']);
+                        }
+                        $close = floor($balance / $old_balance * 100) / 100;
+                        $balance = $balance - $commission_sum;
+                    }catch (\Exception $e){
+                        $balance = $balance * $close;
+                        $balance = floor($balance * (1 - $commission) * 100) / 100;
+                    }
+                }else {
+                    $balance = $balance * $close;
+                    $balance = floor($balance * (1 - $commission) * 100) / 100;
+                }
                 Simulation::create([
                     'market_id' => $market['id'],
                     'action' => 'sell',

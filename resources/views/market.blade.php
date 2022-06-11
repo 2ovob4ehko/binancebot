@@ -56,9 +56,17 @@
                                         </div>
                                         <div class="col-12 col-sm-6 col-md-4 p-1 d-flex align-items-center">
                                             <div class="d-flex align-items-center">
-                                                <label class="mx-2" for="is_online_{{$market->id}}">Онлай торгівля</label>
+                                                <label class="mx-2" for="is_online_{{$market->id}}">Онлайн тестова торгівля</label>
                                                 <div class="col">
                                                     <input type="checkbox" id="is_online_{{$market->id}}" name="is_online" value="yes" class="form-check-input" {{$market->is_online ? 'checked' : ''}}>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-12 col-sm-6 col-md-4 p-1 d-flex align-items-center">
+                                            <div class="d-flex align-items-center">
+                                                <label class="mx-2" for="is_trade_{{$market->id}}">Онлайн торгівля</label>
+                                                <div class="col">
+                                                    <input type="checkbox" id="is_trade_{{$market->id}}" name="is_trade" value="yes" class="form-check-input" {{$market->is_trade ? 'checked' : ''}}>
                                                 </div>
                                             </div>
                                         </div>
@@ -111,7 +119,9 @@
                                         <div class="col-12 p-1">
                                             <button class="btn btn-success btn-sm" type="submit" title="Зберегти"><i class="fa-solid fa-floppy-disk"></i></button>
                                             @if($market->settings)
-                                            <button class="btn btn-primary btn-sm startMarketAnalysis" title="Запустити симуляцію" data-id="{{$market->id}}" type="button"><i class="fa-solid fa-play"></i></button>
+                                                @if($market->is_online || $market->is_trade)
+                                                    <button class="btn btn-primary btn-sm startMarketAnalysis" title="Запустити симуляцію" data-id="{{$market->id}}" type="button"><i class="fa-solid fa-play"></i></button>
+                                                @endif
                                             <button class="btn btn-secondary btn-sm toggleAnalysis" title="Показати результат" type="button"><i class="fa-solid fa-chart-column"></i></button>
                                             <button class="btn btn-danger btn-sm delete" title="Видалити" data-id="{{$market->id}}" type="button"><i class="fa-solid fa-trash-can"></i></button>
                                             @endif

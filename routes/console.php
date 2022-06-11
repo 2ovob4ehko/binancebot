@@ -60,7 +60,7 @@ Artisan::command('trade', function(){
 //                         $markets[$key] = TradeController::addNewPrice($markets[$key],$data);
 //                      }
                         if ($data['e'] == 'kline') {
-                            $markets[$key] = TradeController::addNewCandle($markets[$key], $data['k']);
+                            $markets[$key] = TradeController::addNewCandle($markets[$key], $data['k'], $this);
                         }
                     }
                     $this->info('proc time: ' . (microtime(true) - $proc_start)*1000);

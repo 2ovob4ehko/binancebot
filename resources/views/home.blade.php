@@ -40,7 +40,7 @@
                                             @endif
                                         </div>
                                         <div class="ms-auto">
-                                            @if($market->is_online)
+                                            @if($market->is_online || $market->is_trade)
                                                 <i class="fa-solid fa-money-bill-trend-up"></i>
                                             @endif
                                             @if($market->upload_status === 'uploading')

@@ -27,6 +27,7 @@ Route::group(['middleware' => ['auth']], function () {
     Route::get('/uploadCSVFromBinance/{market}', [MarketController::class,'uploadCSVFromBinance']);
     Route::get('/settings', [SettingController::class, 'index'])->name('settings');
     Route::post('/settings', [SettingController::class, 'save']);
+    Route::get('/trade_list', [MarketController::class, 'tradeList'])->name('trade_list');
 });
 
 Auth::routes([
@@ -45,10 +46,11 @@ Route::get('/test', function(){
     // array_filter($api->account()['balances'],function($item){return $item['asset'] === 'BTC';});
     // $api->marketQuoteBuyTest('BTCUSDT',10); //marketQuoteBuy
     // $api->marketSellTest('BTCUSDT',0.0004); //marketSell
+    // $api->sell('BTCUAH','0.00016','1100000') // продаж бітка по ціні
     try{
-//        echo '<pre>';
-//        var_dump($api->marketQuoteBuyTest('BTCUAH',100));
-//        echo '</pre>';
+        echo '<pre>';
+        var_dump($api->commissionFee('BTCUAH')[0]['takerCommission']);
+        echo '</pre>';
 //        return response()->json($api->account());
     }catch (Exception $e){
         echo '<pre>';

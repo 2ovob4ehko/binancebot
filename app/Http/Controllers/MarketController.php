@@ -7,8 +7,10 @@ use App\Helpers\Intervals;
 use App\Jobs\UploadCSVFromBinance;
 use App\Models\Market;
 use App\Models\Simulation;
+use Binance\API;
 use Carbon\CarbonPeriod;
 use DB;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -33,9 +35,18 @@ class MarketController extends Controller
     public function save(Request $request)
     {
         $name = strtoupper(preg_replace('/[^\w]/', '', $request->name));
+        $api = new API(
+            Auth::user()->setting('api_key')->value ?? '',
+            Auth::user()->setting('secret_key')->value ?? ''
+        );
+        try{
+            $commission = floatval($api->commissionFee($name)[0]['takerCommission']);
+        }catch (Exception $e){
+            $commission = 0;
+        }
         if($request->has('id')){
             if(!Auth::user()->markets->contains($request->id)) return redirect('/');
-            if($request->has('is_online')){
+            if($request->has('is_online') || $request->has('is_trade')){
                 Simulation::where('market_id',$request->id)->delete();
                 Market::where('id',$request->id)->update([
                     'data' => [],
@@ -45,7 +56,7 @@ class MarketController extends Controller
                 ]);
             }
             Market::where('id',$request->id)->update([
-                'name' => $request->name,
+                'name' => $name,
                 'settings' => [
                     'candle' => $request->candle,
                     'period' => $request->period,
@@ -55,14 +66,16 @@ class MarketController extends Controller
                     'rsi_max' => $request->rsi_max,
                     'profit_limit' => $request->profit_limit,
                     'start_balance' => $request->start_balance,
+                    'commission' => $commission
                 ],
-                'is_online' => $request->has('is_online')
+                'is_online' => $request->has('is_online'),
+                'is_trade' => $request->has('is_trade')
             ]);
             $id = $request->id;
         }else{
             $market = Market::create([
                 'user_id' => Auth::user()->id,
-                'name' => $request->name,
+                'name' => $name,
                 'settings' => [
                     'candle' => $request->candle,
                     'period' => $request->period,
@@ -72,12 +85,14 @@ class MarketController extends Controller
                     'rsi_max' => $request->rsi_max,
                     'profit_limit' => $request->profit_limit,
                     'start_balance' => $request->start_balance,
+                    'commission' => $commission
                 ],
                 'data' => [],
                 'rsi' => [],
                 'stoch_rsi' => ['stoch_rsi' => [], 'sma_stoch_rsi' => []],
                 'result' => '',
-                'is_online' => $request->has('is_online')
+                'is_online' => $request->has('is_online'),
+                'is_trade' => $request->has('is_trade')
             ]);
             $id = $market->id;
         }
@@ -95,7 +110,7 @@ class MarketController extends Controller
     {
         set_time_limit(1000);
         $market = Market::where('id',$id)->first();
-        if($market->is_online) return ["success" => false, "message" => 'Онлайн маркет не може проходити аналіз'];;
+        if($market->is_online || $market->is_trade) return ["success" => false, "message" => 'Онлайн маркет не може проходити аналіз'];;
         $settings = $market->settings;
         $analysis = new Analysis();
 
@@ -139,6 +154,7 @@ class MarketController extends Controller
         }
         $balance = floatval($settings['start_balance']);
         $old_balance = floatval($settings['start_balance']);
+        $commission = array_key_exists('commission', $settings) ? $settings['commission'] : 0;
         $status = 'deposit';
         for ($i=0;$i<count($candles);$i++){
 //          next candle if indicator has no data at this time
@@ -184,7 +200,8 @@ class MarketController extends Controller
                 $status = 'bought';
                 $old_balance = $balance;
                 // TODO: зробити скорочення до 0.000000
-                $balance = $close ? floor($balance / $close * 1000000000) / 1000000000 : $balance;
+                $balance = $close ? $balance / $close : $balance;
+                $balance = floor($balance * (1 - $commission) * 1000000000) / 1000000000;
                 Simulation::create([
                     'market_id' => $market->id,
                     'action' => 'buy',
@@ -203,7 +220,8 @@ class MarketController extends Controller
                     $status = 'deposit';
                     $old_balance = $balance;
                     // TODO: зробити скорочення до 0.00
-                    $balance = floor($balance * $close * 100) / 100;
+                    $balance = $balance * $close;
+                    $balance = floor($balance * (1 - $commission) * 100) / 100;
                     Simulation::create([
                         'market_id' => $market->id,
                         'action' => 'sell',
@@ -287,5 +305,13 @@ class MarketController extends Controller
         Market::where('name',$market)->update(['upload_status' => 'uploading']);
         dispatch(new UploadCSVFromBinance($market));
         return ["success" => true, "message" => 'База маркету почала завантажуватися'];
+    }
+
+    public function tradeList()
+    {
+        $markets = Auth::user()->markets()->where('is_trade',1)->get();
+        return view('home',[
+            'markets' => $markets
+        ]);
     }
 }
