@@ -260,9 +260,12 @@ class TradeController extends Controller
                     $commission_sum = 0;
                     foreach ($res['fills'] as $fill){
                         $balance += floatval($fill['qty']);
-                        $commission_sum += floatval($fill['commission']);
+                        if(str_contains($market['name'], $fill['commissionAsset'])){
+                            $commission_sum += floatval($fill['commission']);
+                        }
                     }
-                    $close = floor($old_balance / $balance * 100) / 100;
+                    $old_balance = floatval($res['cummulativeQuoteQty']);
+                    $close = $old_balance / $balance;
                     $balance = $balance - $commission_sum;
                 }catch (\Exception $e){
                     $balance = $close ? $balance / $close : $balance;
@@ -298,9 +301,12 @@ class TradeController extends Controller
                         $commission_sum = 0;
                         foreach ($res['fills'] as $fill){
                             $balance += floatval($fill['qty']) * floatval($fill['price']);
-                            $commission_sum += floatval($fill['commission']);
+                            if(str_contains($market['name'], $fill['commissionAsset'])){
+                                $commission_sum += floatval($fill['commission']);
+                            }
                         }
-                        $close = floor($balance / $old_balance * 100) / 100;
+                        $old_balance = floatval($res['executedQty']);
+                        $close = $balance / $old_balance;
                         $balance = $balance - $commission_sum;
                     }catch (\Exception $e){
                         $balance = $balance * $close;
