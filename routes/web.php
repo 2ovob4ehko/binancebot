@@ -37,25 +37,25 @@ Auth::routes([
 ]);
 
 Route::get('/test', function(){
-    $user = User::find(1);
-    $api = new API(
-        $user->setting('api_key')->value ?? '',
-        $user->setting('secret_key')->value ?? ''
-    );
+//    $user = User::find(1);
+//    $api = new API(
+//        $user->setting('api_key')->value ?? '',
+//        $user->setting('secret_key')->value ?? ''
+//    );
     // $api->commissionFee('BTCUAH')[0]['takerCommission'];
     // array_filter($api->account()['balances'],function($item){return $item['asset'] === 'BTC';});
     // $api->marketQuoteBuyTest('BTCUSDT',10); //marketQuoteBuy
     // $api->marketSellTest('BTCUSDT',0.0004); //marketSell
     // $api->sell('BTCUAH','0.00016','1100000') // продаж бітка по ціні
-    try{
-        echo '<pre>';
-        var_dump($api->commissionFee('BTCUAH')[0]['takerCommission']);
-        echo '</pre>';
-//        return response()->json($api->account());
-    }catch (Exception $e){
-        echo '<pre>';
-        var_dump($e->getMessage());
-        echo '</pre>';
-    }
+//    try{
+//        echo '<pre>';
+//        var_dump($api->commissionFee('BTCUAH')[0]['takerCommission']);
+//        echo '</pre>';
+////        return response()->json($api->account());
+//    }catch (Exception $e){
+//        echo '<pre>';
+//        var_dump($e->getMessage());
+//        echo '</pre>';
+//    }
 });
 //Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');

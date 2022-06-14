@@ -119,7 +119,7 @@
                                         <div class="col-12 p-1">
                                             <button class="btn btn-success btn-sm" type="submit" title="Зберегти"><i class="fa-solid fa-floppy-disk"></i></button>
                                             @if($market->settings)
-                                                @if($market->is_online || $market->is_trade)
+                                                @if(!$market->is_online && !$market->is_trade)
                                                     <button class="btn btn-primary btn-sm startMarketAnalysis" title="Запустити симуляцію" data-id="{{$market->id}}" type="button"><i class="fa-solid fa-play"></i></button>
                                                 @endif
                                             <button class="btn btn-secondary btn-sm toggleAnalysis" title="Показати результат" type="button"><i class="fa-solid fa-chart-column"></i></button>
