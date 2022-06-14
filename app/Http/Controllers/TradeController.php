@@ -23,7 +23,8 @@ class TradeController extends Controller
                 $user = $market->user;
                 $api_key = $user->setting('api_key')->value ?? '';
                 $secret_key = $user->setting('secret_key')->value ?? '';
-
+                $api = new API($api_key, $secret_key);
+                $api->caOverride = true;
                 $output[$market->id] = [
                     'id' => $market->id,
                     'name' => $market->name,
@@ -31,7 +32,7 @@ class TradeController extends Controller
                     'data' => $candles,
                     'mark' => false,
                     'is_trade' => $market->is_trade,
-                    'api' => new API($api_key, $secret_key)
+                    'api' => $api
                 ];
             }
         }

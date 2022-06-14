@@ -39,6 +39,7 @@ class MarketController extends Controller
             Auth::user()->setting('api_key')->value ?? '',
             Auth::user()->setting('secret_key')->value ?? ''
         );
+        $api->caOverride = true;
         try{
             $commission = floatval($api->commissionFee($name)[0]['takerCommission']);
         }catch (Exception $e){
