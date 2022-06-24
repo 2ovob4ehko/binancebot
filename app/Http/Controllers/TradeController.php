@@ -246,10 +246,11 @@ class TradeController extends Controller
             }
         }
         $close = $trade['c'];
-
+        $trade_OK = true;
         if($status == 'deposit' && ($is_rsi ? $rsi[$i] <= $settings['rsi_min'] : true) &&
             ($is_stoch ? $stoch_rsi_logic === 'up' : true)){
             $status = 'bought';
+            $balance = floatval($settings['start_balance']); // stable set amount of quote for buying
             $old_balance = $balance;
             // TODO: зробити скорочення до 0.000000
             if($market['is_trade']){
@@ -268,24 +269,25 @@ class TradeController extends Controller
                     $close = $old_balance / $balance;
                     $balance = $balance - $commission_sum;
                 }catch (\Exception $e){
-                    $balance = $close ? $balance / $close : $balance;
-                    $balance = floor($balance * (1 - $commission) * 1000000000) / 1000000000;
+                    $trade_OK = false;
                 }
             }else{
                 $balance = $close ? $balance / $close : $balance;
                 $balance = floor($balance * (1 - $commission) * 1000000000) / 1000000000;
             }
-            Simulation::create([
-                'market_id' => $market['id'],
-                'action' => 'buy',
-                'value' => $old_balance,
-                'result' => $balance,
-                'price' => $close,
-                'rsi' => $is_rsi ? $rsi[$i] : 0,
-                'stoch_rsi' => $is_stoch ? $stoch_rsi['stoch_rsi'][$i] : 0,
-                'time' => date("Y-m-d H:i:s",intval($trade['T'])/1000)
-            ]);
-            $market['mark'] = 'buy';
+            if($trade_OK){
+                Simulation::create([
+                    'market_id' => $market['id'],
+                    'action' => 'buy',
+                    'value' => $old_balance,
+                    'result' => $balance,
+                    'price' => $close,
+                    'rsi' => $is_rsi ? $rsi[$i] : 0,
+                    'stoch_rsi' => $is_stoch ? $stoch_rsi['stoch_rsi'][$i] : 0,
+                    'time' => date("Y-m-d H:i:s",intval($trade['T'])/1000)
+                ]);
+                $market['mark'] = 'buy';
+            }
         }elseif($status == 'bought'){
             $is_profit = floatval($settings['profit_limit']) == 0.0 ? false : $balance * $close > $old_balance * (1 + floatval($settings['profit_limit']));
             if((intval($settings['rsi_max']) > 0 && ($is_rsi ? $rsi[$i] >= $settings['rsi_max'] : true) &&
@@ -309,29 +311,32 @@ class TradeController extends Controller
                         $close = $balance / $old_balance;
                         $balance = $balance - $commission_sum;
                     }catch (\Exception $e){
-                        $balance = $balance * $close;
-                        $balance = floor($balance * (1 - $commission) * 100) / 100;
+                        $trade_OK = false;
                     }
                 }else {
                     $balance = $balance * $close;
                     $balance = floor($balance * (1 - $commission) * 100) / 100;
                 }
-                Simulation::create([
-                    'market_id' => $market['id'],
-                    'action' => 'sell',
-                    'value' => $old_balance,
-                    'result' => $balance,
-                    'price' => $close,
-                    'rsi' => $is_rsi ? $rsi[$i] : 0,
-                    'stoch_rsi' => $is_stoch ? $stoch_rsi['stoch_rsi'][$i] : 0,
-                    'time' => date("Y-m-d H:i:s",intval($trade['T'])/1000)
-                ]);
-                $market['mark'] = 'sell';
+                if($trade_OK){
+                    Simulation::create([
+                        'market_id' => $market['id'],
+                        'action' => 'sell',
+                        'value' => $old_balance,
+                        'result' => $balance,
+                        'price' => $close,
+                        'rsi' => $is_rsi ? $rsi[$i] : 0,
+                        'stoch_rsi' => $is_stoch ? $stoch_rsi['stoch_rsi'][$i] : 0,
+                        'time' => date("Y-m-d H:i:s",intval($trade['T'])/1000)
+                    ]);
+                    $market['mark'] = 'sell';
+                }
             }
         }
-        $market['status'] = $status;
-        $market['balance'] = $balance;
-        $market['old_balance'] = $old_balance;
+        if($trade_OK){
+            $market['status'] = $status;
+            $market['balance'] = $balance;
+            $market['old_balance'] = $old_balance;
+        }
 //        ---------------------------------------
 
         if($next){
