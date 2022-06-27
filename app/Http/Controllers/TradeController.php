@@ -270,6 +270,7 @@ class TradeController extends Controller
                     $balance = $balance - $commission_sum;
                 }catch (\Exception $e){
                     $trade_OK = false;
+                    $console->info('market '.$market['id'].' buy error: ' . $e->getMessage());
                 }
             }else{
                 $balance = $close ? $balance / $close : $balance;
@@ -312,6 +313,7 @@ class TradeController extends Controller
                         $balance = $balance - $commission_sum;
                     }catch (\Exception $e){
                         $trade_OK = false;
+                        $console->info('market '.$market['id'].' sell error: ' . $e->getMessage());
                     }
                 }else {
                     $balance = $balance * $close;
