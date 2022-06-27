@@ -63,7 +63,8 @@ Artisan::command('trade', function(){
                             $markets[$key] = TradeController::addNewCandle($markets[$key], $data['k'], $this);
                         }
                     }
-                    $this->info('proc time: ' . (microtime(true) - $proc_start)*1000);
+                    $proc_time = (microtime(true) - $proc_start)*1000;
+                    if($proc_time > 1) $this->info('proc time: ' . $proc_time);
                 }else{
                     $this->info('message: ' . $message);
                 }
