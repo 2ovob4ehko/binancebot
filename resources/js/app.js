@@ -71,6 +71,16 @@ $(document).ready(function(){
                         text: 'Sell'
                     }
                 }
+            }else if(d.m){
+                return {
+                    x: d.c[0],
+                    borderColor: 'yellow',
+                    label: {
+                        borderColor: 'yellow',
+                        orientation: 'horizontal',
+                        text: d.m
+                    }
+                }
             }
         }).filter(d => d !== undefined)
         var options = {

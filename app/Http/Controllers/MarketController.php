@@ -158,15 +158,7 @@ class MarketController extends Controller
         Simulation::where('market_id',$market->id)->delete();
         $settings = $market->settings;
         $data = [];
-//        get name of currencies
-        if(strlen($market->name) > 6){
-            $subC = 'USDT';
-            $mainC = str_replace('USDT','',$market->name);
-        }else{
-            $parts = str_split($market->name,3);
-            $subC = $parts[1];
-            $mainC = $parts[0];
-        }
+
         $balance = floatval($settings['start_balance']);
         $old_balance = floatval($settings['start_balance']);
         $commission = array_key_exists('commission', $settings) ? $settings['commission'] : 0;
@@ -252,7 +244,7 @@ class MarketController extends Controller
             }
             array_push($data,['c' => $candles[$i], 'm' => $mark]);
         }
-        $currency = $status == 'bought' ? $mainC : $subC;
+        $currency = $status == 'bought' ? $settings['baseAsset'] : $settings['quoteAsset'];
         return [
             'finish' => $balance.' '.$currency,
             'data' => $data,

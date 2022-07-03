@@ -201,6 +201,12 @@ class Trading
                     $trade_OK = false;
                     $this->console->info('market '.$this->market['id'].' buy error: ' . $e->getMessage());
                     $this->telegram_log('market '.$this->market['name'].' '.$this->market['id'].' buy error: ' . $e->getMessage());
+                    if(str_contains($e->getMessage(), 'MIN_NOTIONAL')){
+                        $this->market['mark'] = 'мала сума закупки';
+                    }
+                    if(str_contains($e->getMessage(), 'insufficient balance')){
+                        $this->market['mark'] = 'мало грошей';
+                    }
                 }
             }else{
                 $this->balance = $close ? $this->balance / $close : $this->balance;
@@ -241,6 +247,12 @@ class Trading
                     $trade_OK = false;
                     $this->console->info('market '.$this->market['id'].' sell error: ' . $e->getMessage());
                     $this->telegram_log('market '.$this->market['name'].' '.$this->market['id'].' sell error: ' . $e->getMessage());
+                    if(str_contains($e->getMessage(), 'MIN_NOTIONAL')){
+                        $this->market['mark'] = 'мала сума закупки';
+                    }
+                    if(str_contains($e->getMessage(), 'insufficient balance')){
+                        $this->market['mark'] = 'мало грошей';
+                    }
                 }
             }else {
                 $this->balance = $this->balance * $close;
