@@ -31,7 +31,7 @@ Route::group(['middleware' => ['auth']], function () {
 });
 
 Auth::routes([
-    'register' => true, // Registration Routes...
+    'register' => false, // Registration Routes...
     'reset' => true, // Password Reset Routes...
     'verify' => true,
 ]);
@@ -49,7 +49,7 @@ Route::get('/test', function(){
     // $api->sell('BTCUAH','0.00016','1100000') // продаж бітка по ціні
 //    try{
 //        echo '<pre>';
-//        var_dump($api->commissionFee('BTCUAH')[0]['takerCommission']);
+//        var_dump($api->marketQuoteBuyTest('ADAUSDT',11));
 //        echo '</pre>';
 ////        return response()->json($api->account());
 //    }catch (Exception $e){

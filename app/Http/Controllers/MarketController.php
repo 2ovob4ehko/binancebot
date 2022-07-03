@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\Analysis;
+use App\Helpers\Trading;
 use App\Helpers\Intervals;
 use App\Jobs\UploadCSVFromBinance;
 use App\Models\Market;
@@ -41,6 +42,11 @@ class MarketController extends Controller
         );
         $api->caOverride = true;
         try{
+            $info = $api->exchangeInfo()['symbols'][$name];
+            $baseAsset = $info['baseAsset'];
+            $baseAssetPrecision = $info['baseAssetPrecision'];
+            $quoteAsset = $info['quoteAsset'];
+            $quoteAssetPrecision = $info['quoteAssetPrecision'];
             $commission = floatval($api->commissionFee($name)[0]['takerCommission']);
         }catch (Exception $e){
             $commission = 0;
@@ -67,7 +73,11 @@ class MarketController extends Controller
                     'rsi_max' => $request->rsi_max,
                     'profit_limit' => $request->profit_limit,
                     'start_balance' => $request->start_balance,
-                    'commission' => $commission
+                    'commission' => $commission,
+                    'baseAsset' => $baseAsset ?? null,
+                    'baseAssetPrecision' => $baseAssetPrecision ?? null,
+                    'quoteAsset' => $quoteAsset ?? null,
+                    'quoteAssetPrecision' => $quoteAssetPrecision ?? null,
                 ],
                 'is_online' => $request->has('is_online'),
                 'is_trade' => $request->has('is_trade')
@@ -86,7 +96,11 @@ class MarketController extends Controller
                     'rsi_max' => $request->rsi_max,
                     'profit_limit' => $request->profit_limit,
                     'start_balance' => $request->start_balance,
-                    'commission' => $commission
+                    'commission' => $commission,
+                    'baseAsset' => $baseAsset ?? null,
+                    'baseAssetPrecision' => $baseAssetPrecision ?? null,
+                    'quoteAsset' => $quoteAsset ?? null,
+                    'quoteAssetPrecision' => $quoteAssetPrecision ?? null,
                 ],
                 'data' => [],
                 'rsi' => [],
@@ -202,7 +216,7 @@ class MarketController extends Controller
                 $old_balance = $balance;
                 // TODO: зробити скорочення до 0.000000
                 $balance = $close ? $balance / $close : $balance;
-                $balance = floor($balance * (1 - $commission) * 1000000000) / 1000000000;
+                $balance = floor($balance * (1 - $commission) * 10**$settings['baseAssetPrecision']) / 10**$settings['baseAssetPrecision'];
                 Simulation::create([
                     'market_id' => $market->id,
                     'action' => 'buy',
@@ -222,7 +236,7 @@ class MarketController extends Controller
                     $old_balance = $balance;
                     // TODO: зробити скорочення до 0.00
                     $balance = $balance * $close;
-                    $balance = floor($balance * (1 - $commission) * 100) / 100;
+                    $balance = floor($balance * (1 - $commission) * 10**$settings['quoteAssetPrecision']) / 10**$settings['quoteAssetPrecision'];
                     Simulation::create([
                         'market_id' => $market->id,
                         'action' => 'sell',
