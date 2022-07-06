@@ -49,7 +49,7 @@ Route::get('/test', function(){
     // $api->sell('BTCUAH','0.00016','1100000') // продаж бітка по ціні
 //    try{
 //        echo '<pre>';
-//        var_dump($api->marketQuoteBuyTest('ADAUSDT',11));
+//        var_dump($api->marketQuoteBuyTest('ADAUSDT',9));
 //        echo '</pre>';
 ////        return response()->json($api->account());
 //    }catch (Exception $e){
