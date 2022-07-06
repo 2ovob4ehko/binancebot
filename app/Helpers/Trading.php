@@ -175,14 +175,7 @@ class Trading
         $stoch_buy_rule = !$this->is_stoch || $this->stoch_rsi_logic === 'up';
         $stoch_sell_rule = !$this->is_stoch || $this->stoch_rsi_logic === 'down';
 
-        if(is_numeric($this->balance) && is_numeric($close) && is_numeric(floatval($this->settings['profit_limit']))){
-            $is_profit = !(floatval($this->settings['profit_limit']) == 0.0) &&
-                $this->balance * $close > $this->balance * (1 + floatval($this->settings['profit_limit']));
-        }else{
-            $is_profit = false;
-            $this->console->info('variables '.$this->balance.' '. $close.' '.$this->settings['profit_limit']);
-        }
-
+            $is_profit = !(floatval($this->settings['profit_limit']) == 0.0) && $this->balance * $close > $this->balance * (1 + floatval($this->settings['profit_limit']));
 
         if($this->status == 'deposit' && $rsi_buy_rule && $stoch_buy_rule){
             $this->status = 'bought';
@@ -232,7 +225,7 @@ class Trading
                 $this->market['mark'] = 'buy';
             }
         }elseif($this->status == 'bought' && (($rsi_sell_rule && $stoch_sell_rule) || $is_profit)){
-            $status = 'deposit';
+            $this->status = 'deposit';
             // TODO: зробити скорочення до 0.00
             if($this->market['is_trade']){
                 try{
