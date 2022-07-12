@@ -23,6 +23,7 @@ class Trading
     public $stoch_rsi;
     public $status;
     public $balance;
+    public $old_balance;
     public $stoch_rsi_logic;
 
     /**
@@ -125,14 +126,17 @@ class Trading
         if(array_key_exists('status',$this->market)){
             $this->status = $this->market['status'];
             $this->balance = array_key_exists('balance',$this->market) ? $this->market['balance'] : floatval($this->settings['start_balance']);
+            $this->old_balance = array_key_exists('old_balance',$this->market) ? $this->market['old_balance'] : floatval($this->settings['start_balance']);
         }else{
             $simulation = Simulation::where('market_id',$this->market['id'])->latest('id')->first();
             if($simulation){
                 $this->status = $simulation->action === 'buy' ? 'bought' : 'deposit';
                 $this->balance = $simulation->result;
+                $this->old_balance = $simulation->value;
             }else{
                 $this->status = 'deposit';
                 $this->balance = floatval($this->settings['start_balance']);
+                $this->old_balance = floatval($this->settings['start_balance']);
             }
         }
     }
@@ -175,7 +179,7 @@ class Trading
         $stoch_buy_rule = !$this->is_stoch || $this->stoch_rsi_logic === 'up';
         $stoch_sell_rule = !$this->is_stoch || $this->stoch_rsi_logic === 'down';
 
-            $is_profit = !(floatval($this->settings['profit_limit']) == 0.0) && $this->balance * $close > $this->balance * (1 + floatval($this->settings['profit_limit']));
+        $is_profit = !(floatval($this->settings['profit_limit']) == 0.0) && $this->balance * $close > $this->old_balance * (1 + floatval($this->settings['profit_limit']));
 
         if($this->status == 'deposit' && $rsi_buy_rule && $stoch_buy_rule){
             $this->status = 'bought';
@@ -274,6 +278,7 @@ class Trading
         if($trade_OK){
             $this->market['status'] = $this->status;
             $this->market['balance'] = $this->balance;
+            $this->market['old_balance'] = $old_balance;
         }
     }
 

@@ -37,8 +37,8 @@ Auth::routes([
 ]);
 
 Route::get('/test', function(){
-//    $user = User::find(1);
-//    $api = new API(
+//    $user = User::find(2);
+//    $api = new App\BinanceSDK\BinanceSDK(
 //        $user->setting('api_key')->value ?? '',
 //        $user->setting('secret_key')->value ?? ''
 //    );
@@ -48,14 +48,17 @@ Route::get('/test', function(){
     // $api->marketSellTest('BTCUSDT',0.0004); //marketSell
     // $api->sell('BTCUAH','0.00016','1100000') // продаж бітка по ціні
 //    try{
+////        $api->marginTypeFuture('BTCUSDT',true);
 //        echo '<pre>';
-//        var_dump($api->marketQuoteBuyTest('ADAUSDT',9));
+//        var_dump($api->accountFuture()['positions']['BTCUSDT']);
 //        echo '</pre>';
-////        return response()->json($api->account());
 //    }catch (Exception $e){
 //        echo '<pre>';
 //        var_dump($e->getMessage());
 //        echo '</pre>';
 //    }
+//    echo '<pre>';
+//    var_dump($api->lastRequest);
+//    echo '</pre>';
 });
 //Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
