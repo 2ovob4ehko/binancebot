@@ -25,6 +25,7 @@ class Trading
     public $balance;
     public $old_balance;
     public $stoch_rsi_logic;
+    public $old_price;
 
     /**
      * Trading constructor.
@@ -50,7 +51,7 @@ class Trading
     public static function getMarketsForTrade()
     {
         $output = [];
-        $markets = Market::where('is_online',1)->orWhere('is_trade',1)->get();
+        $markets = Market::where('type','spot')->where('is_online',1)->orWhere('is_trade',1)->get();
         if($markets->count() > 0){
             foreach ($markets as $market){
                 $settings = $market->settings;
@@ -127,16 +128,19 @@ class Trading
             $this->status = $this->market['status'];
             $this->balance = array_key_exists('balance',$this->market) ? $this->market['balance'] : floatval($this->settings['start_balance']);
             $this->old_balance = array_key_exists('old_balance',$this->market) ? $this->market['old_balance'] : floatval($this->settings['start_balance']);
+            $this->old_price = array_key_exists('old_price',$this->market) ? $this->market['old_price'] : 0;
         }else{
             $simulation = Simulation::where('market_id',$this->market['id'])->latest('id')->first();
             if($simulation){
                 $this->status = $simulation->action === 'buy' ? 'bought' : 'deposit';
                 $this->balance = $simulation->result;
                 $this->old_balance = $simulation->value;
+                $this->old_price = $simulation->price;
             }else{
                 $this->status = 'deposit';
                 $this->balance = floatval($this->settings['start_balance']);
                 $this->old_balance = floatval($this->settings['start_balance']);
+                $this->old_price = 0;
             }
         }
     }
@@ -179,7 +183,9 @@ class Trading
         $stoch_buy_rule = !$this->is_stoch || $this->stoch_rsi_logic === 'up';
         $stoch_sell_rule = !$this->is_stoch || $this->stoch_rsi_logic === 'down';
 
-        $is_profit = !(floatval($this->settings['profit_limit']) == 0.0) && $this->balance * $close > $this->old_balance * (1 + floatval($this->settings['profit_limit']));
+//        $is_profit = !(floatval($this->settings['profit_limit']) == 0.0) && $this->balance * $close > $this->old_balance * (1 + floatval($this->settings['profit_limit']));
+
+        $is_profit = !(floatval($this->settings['profit_limit']) == 0.0) && $close > $this->old_price * (1 + floatval($this->settings['profit_limit']));
 
         if($this->status == 'deposit' && $rsi_buy_rule && $stoch_buy_rule){
             $this->status = 'bought';
@@ -203,12 +209,12 @@ class Trading
                 }catch (\Exception $e){
                     $trade_OK = false;
                     $this->console->info('market '.$this->market['id'].' buy error: ' . $e->getMessage());
-                    $this->telegram_log('market '.$this->market['name'].' '.$this->market['id'].' buy error: ' . $e->getMessage());
                     if(str_contains($e->getMessage(), 'MIN_NOTIONAL')){
                         $this->market['mark'] = 'мала сума закупки';
-                    }
-                    if(str_contains($e->getMessage(), 'insufficient balance')){
+                    }elseif(str_contains($e->getMessage(), 'insufficient balance')){
                         $this->market['mark'] = 'мало грошей';
+                    }else{
+                        $this->telegram_log('market '.$this->market['name'].' '.$this->market['id'].' buy error: ' . $e->getMessage());
                     }
                 }
             }else{
@@ -227,6 +233,7 @@ class Trading
                     'time' => date("Y-m-d H:i:s",intval($this->trade['T'])/1000)
                 ]);
                 $this->market['mark'] = 'buy';
+                $this->market['old_price'] = $close;
             }
         }elseif($this->status == 'bought' && (($rsi_sell_rule && $stoch_sell_rule) || $is_profit)){
             $this->status = 'deposit';
@@ -249,12 +256,12 @@ class Trading
                 }catch (\Exception $e){
                     $trade_OK = false;
                     $this->console->info('market '.$this->market['id'].' sell error: ' . $e->getMessage());
-                    $this->telegram_log('market '.$this->market['name'].' '.$this->market['id'].' sell error: ' . $e->getMessage());
                     if(str_contains($e->getMessage(), 'MIN_NOTIONAL')){
                         $this->market['mark'] = 'мала сума закупки';
-                    }
-                    if(str_contains($e->getMessage(), 'insufficient balance')){
+                    }elseif(str_contains($e->getMessage(), 'insufficient balance')){
                         $this->market['mark'] = 'мало грошей';
+                    }else{
+                        $this->telegram_log('market '.$this->market['name'].' '.$this->market['id'].' sell error: ' . $e->getMessage());
                     }
                 }
             }else {
@@ -273,6 +280,7 @@ class Trading
                     'time' => date("Y-m-d H:i:s",intval($this->trade['T'])/1000)
                 ]);
                 $this->market['mark'] = 'sell';
+                $this->market['old_price'] = $close;
             }
         }
         if($trade_OK){

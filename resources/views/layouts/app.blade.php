@@ -53,6 +53,9 @@
                             @endif
                         @else
                             <li class="nav-item">
+                                <a class="nav-link {{ (request()->is('futures_list')) ? 'active' : '' }}" href="{{ route('futures_list') }}">{{__('Futures')}}</a>
+                            </li>
+                            <li class="nav-item">
                                 <a class="nav-link {{ (request()->is('trade_list')) ? 'active' : '' }}" href="{{ route('trade_list') }}">{{__('Trade')}}</a>
                             </li>
                             <li class="nav-item">

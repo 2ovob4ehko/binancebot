@@ -26,7 +26,7 @@ class HomeController extends Controller
      */
     public function index()
     {
-        $markets = Auth::user()->markets()->where('is_trade',0)->get();
+        $markets = Auth::user()->markets()->where('type','spot')->where('is_trade',0)->get();
         return view('home',[
             'markets' => $markets
         ]);

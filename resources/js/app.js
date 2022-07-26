@@ -11,17 +11,26 @@ $(document).ready(function(){
                 location.reload()
             })
             .catch(function (error) {
-                console.log(error);
+                console.log(error)
             })
     })
     $('.delete').click(function(){
-        let $row = $(this).closest('.row')
+        let $row = $(this).closest('.market_row')
         axios.delete('/market/'+$(this).attr('data-id'))
             .then(function (response) {
                 $row.remove()
             })
             .catch(function (error) {
-                console.log(error);
+                console.log(error)
+            })
+    })
+    $('.delete_market').click(function(){
+        axios.delete('/market/'+$(this).attr('data-id'))
+            .then(function (response) {
+                window.close()
+            })
+            .catch(function (error) {
+                console.log(error)
             })
     })
     $('.toggleAnalysis').click(function(){

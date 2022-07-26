@@ -11,7 +11,7 @@
                         <div id="marketTable" class="table_striped">
                             @if(!empty($markets) && $markets->count())
                                 @foreach($markets as $index=>$market)
-                                    <div class="d-flex align-items-center mx-0">
+                                    <div class="market_row d-flex align-items-center mx-0">
                                         <div class="flex-1 p-1">
                                             <b>{{$market->name}}</b>
                                             @if(!empty($market->settings['candle']))

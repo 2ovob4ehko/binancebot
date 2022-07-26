@@ -123,7 +123,7 @@
                                                     <button class="btn btn-primary btn-sm startMarketAnalysis" title="Запустити симуляцію" data-id="{{$market->id}}" type="button"><i class="fa-solid fa-play"></i></button>
                                                 @endif
                                             <button class="btn btn-secondary btn-sm toggleAnalysis" title="Показати результат" type="button"><i class="fa-solid fa-chart-column"></i></button>
-                                            <button class="btn btn-danger btn-sm delete" title="Видалити" data-id="{{$market->id}}" type="button"><i class="fa-solid fa-trash-can"></i></button>
+                                            <button class="btn btn-danger btn-sm delete_market" title="Видалити" data-id="{{$market->id}}" type="button"><i class="fa-solid fa-trash-can"></i></button>
                                             @endif
                                         </div>
                                     </div>

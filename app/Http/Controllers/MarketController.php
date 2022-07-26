@@ -107,7 +107,8 @@ class MarketController extends Controller
                 'stoch_rsi' => ['stoch_rsi' => [], 'sma_stoch_rsi' => []],
                 'result' => '',
                 'is_online' => $request->has('is_online'),
-                'is_trade' => $request->has('is_trade')
+                'is_trade' => $request->has('is_trade'),
+                'type' => 'spot'
             ]);
             $id = $market->id;
         }
@@ -316,7 +317,7 @@ class MarketController extends Controller
 
     public function tradeList()
     {
-        $markets = Auth::user()->markets()->where('is_trade',1)->get();
+        $markets = Auth::user()->markets()->where('type','spot')->where('is_trade',1)->get();
         return view('home',[
             'markets' => $markets
         ]);

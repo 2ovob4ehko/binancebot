@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\FutureMarketController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MarketController;
 use App\Http\Controllers\SettingController;
@@ -28,6 +29,9 @@ Route::group(['middleware' => ['auth']], function () {
     Route::get('/settings', [SettingController::class, 'index'])->name('settings');
     Route::post('/settings', [SettingController::class, 'save']);
     Route::get('/trade_list', [MarketController::class, 'tradeList'])->name('trade_list');
+    Route::get('/futures_list', [FutureMarketController::class, 'index'])->name('futures_list');
+    Route::get('/futures_market/{id}', [FutureMarketController::class, 'show']);
+    Route::post('/futures_market', [FutureMarketController::class, 'save']);
 });
 
 Auth::routes([
