@@ -183,9 +183,7 @@ class Trading
         $stoch_buy_rule = !$this->is_stoch || $this->stoch_rsi_logic === 'up';
         $stoch_sell_rule = !$this->is_stoch || $this->stoch_rsi_logic === 'down';
 
-//        $is_profit = !(floatval($this->settings['profit_limit']) == 0.0) && $this->balance * $close > $this->old_balance * (1 + floatval($this->settings['profit_limit']));
 
-        $is_profit = !(floatval($this->settings['profit_limit']) == 0.0) && $close > $this->old_price * (1 + floatval($this->settings['profit_limit']));
 
         if($this->status == 'deposit' && $rsi_buy_rule && $stoch_buy_rule){
             $this->status = 'bought';
@@ -235,52 +233,56 @@ class Trading
                 $this->market['mark'] = 'buy';
                 $this->market['old_price'] = $close;
             }
-        }elseif($this->status == 'bought' && (($rsi_sell_rule && $stoch_sell_rule) || $is_profit)){
-            $this->status = 'deposit';
-            // TODO: зробити скорочення до 0.00
-            if($this->market['is_trade']){
-                try{
-                    $res = $this->market['api']->marketSell($this->market['name'],$this->balance);
-                    $this->console->info('market '.$this->market['id'].' sell: ' . json_encode($res));
-                    $this->balance = 0;
-                    $commission_sum = 0;
-                    foreach ($res['fills'] as $fill){
-                        $this->balance += floatval($fill['qty']) * floatval($fill['price']);
-                        if(str_contains($this->market['name'], $fill['commissionAsset'])){
-                            $commission_sum += floatval($fill['commission']);
+        }elseif($this->status == 'bought') {
+            $is_profit = !(floatval($this->settings['profit_limit']) == 0.0) && $close > $this->old_price * (1 + floatval($this->settings['profit_limit']));
+
+            if (($rsi_sell_rule && $stoch_sell_rule) || $is_profit) {
+                $this->status = 'deposit';
+                // TODO: зробити скорочення до 0.00
+                if ($this->market['is_trade']) {
+                    try {
+                        $res = $this->market['api']->marketSell($this->market['name'], $this->balance);
+                        $this->console->info('market ' . $this->market['id'] . ' sell: ' . json_encode($res));
+                        $this->balance = 0;
+                        $commission_sum = 0;
+                        foreach ($res['fills'] as $fill) {
+                            $this->balance += floatval($fill['qty']) * floatval($fill['price']);
+                            if (str_contains($this->market['name'], $fill['commissionAsset'])) {
+                                $commission_sum += floatval($fill['commission']);
+                            }
+                        }
+                        $old_balance = floatval($res['executedQty']);
+                        $close = $this->balance / $old_balance;
+                        $this->balance = $this->balance - $commission_sum;
+                    } catch (\Exception $e) {
+                        $trade_OK = false;
+                        $this->console->info('market ' . $this->market['id'] . ' sell error: ' . $e->getMessage());
+                        if (str_contains($e->getMessage(), 'MIN_NOTIONAL')) {
+                            $this->market['mark'] = 'мала сума закупки';
+                        } elseif (str_contains($e->getMessage(), 'insufficient balance')) {
+                            $this->market['mark'] = 'мало грошей';
+                        } else {
+                            $this->telegram_log('market ' . $this->market['name'] . ' ' . $this->market['id'] . ' sell error: ' . $e->getMessage());
                         }
                     }
-                    $old_balance = floatval($res['executedQty']);
-                    $close = $this->balance / $old_balance;
-                    $this->balance = $this->balance - $commission_sum;
-                }catch (\Exception $e){
-                    $trade_OK = false;
-                    $this->console->info('market '.$this->market['id'].' sell error: ' . $e->getMessage());
-                    if(str_contains($e->getMessage(), 'MIN_NOTIONAL')){
-                        $this->market['mark'] = 'мала сума закупки';
-                    }elseif(str_contains($e->getMessage(), 'insufficient balance')){
-                        $this->market['mark'] = 'мало грошей';
-                    }else{
-                        $this->telegram_log('market '.$this->market['name'].' '.$this->market['id'].' sell error: ' . $e->getMessage());
-                    }
+                } else {
+                    $this->balance = $this->balance * $close;
+                    $this->balance = floor($this->balance * (1 - $commission) * 10 ** $this->settings['quoteAssetPrecision']) / 10 ** $this->settings['quoteAssetPrecision'];
                 }
-            }else {
-                $this->balance = $this->balance * $close;
-                $this->balance = floor($this->balance * (1 - $commission) * 10**$this->settings['quoteAssetPrecision']) / 10**$this->settings['quoteAssetPrecision'];
-            }
-            if($trade_OK){
-                Simulation::create([
-                    'market_id' => $this->market['id'],
-                    'action' => 'sell',
-                    'value' => $old_balance,
-                    'result' => $this->balance,
-                    'price' => $close,
-                    'rsi' => $this->is_rsi ? $this->rsi[$this->last_index] : 0,
-                    'stoch_rsi' => $this->is_stoch ? $this->stoch_rsi['stoch_rsi'][$this->last_index] : 0,
-                    'time' => date("Y-m-d H:i:s",intval($this->trade['T'])/1000)
-                ]);
-                $this->market['mark'] = 'sell';
-                $this->market['old_price'] = $close;
+                if ($trade_OK) {
+                    Simulation::create([
+                        'market_id' => $this->market['id'],
+                        'action' => 'sell',
+                        'value' => $old_balance,
+                        'result' => $this->balance,
+                        'price' => $close,
+                        'rsi' => $this->is_rsi ? $this->rsi[$this->last_index] : 0,
+                        'stoch_rsi' => $this->is_stoch ? $this->stoch_rsi['stoch_rsi'][$this->last_index] : 0,
+                        'time' => date("Y-m-d H:i:s", intval($this->trade['T']) / 1000)
+                    ]);
+                    $this->market['mark'] = 'sell';
+                    $this->market['old_price'] = $close;
+                }
             }
         }
         if($trade_OK){
