@@ -133,9 +133,10 @@
                                      data-group="market-{{$market->id}}"
                                      data-min="{{$market->settings['rsi_min']}}"
                                      data-max="{{$market->settings['rsi_max']}}"
-                                     data-data='{{json_encode($market->data)}}'
-                                     data-rsi='{{json_encode($market->rsi)}}'
-                                     data-stochrsi='{{json_encode($market->stoch_rsi)}}'>
+                                     data-data='{{json_encode($market->chartsData())}}'
+                                     data-rsi='{{json_encode($market->chartsRsi())}}'
+                                     data-stochrsi='{{json_encode($market->chartsStochRsi())}}'
+                                     data-smastochrsi='{{json_encode($market->chartsSmaStochRsi())}}'>
                                     <div class="row">
                                         <div class="col-3"><b>Результат</b></div>
                                         <div class="col-9">{{$market->result}}</div>

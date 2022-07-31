@@ -6,6 +6,7 @@ use App\Helpers\Analysis;
 use App\Helpers\Trading;
 use App\Helpers\Intervals;
 use App\Jobs\UploadCSVFromBinance;
+use App\Models\Chart;
 use App\Models\Market;
 use App\Models\Simulation;
 use Binance\API;
@@ -55,6 +56,7 @@ class MarketController extends Controller
             if(!Auth::user()->markets->contains($request->id)) return redirect('/');
             if($request->has('is_online') || $request->has('is_trade')){
                 Simulation::where('market_id',$request->id)->delete();
+                Chart::where('market_id',$request->id)->delete();
                 Market::where('id',$request->id)->update([
                     'data' => [],
                     'rsi' => [],
@@ -144,9 +146,41 @@ class MarketController extends Controller
 
         $result = $this->makeSimulation($market,$rsi,$stoch_rsi,$candles);
 
-        $market->data = $result['data'];
-        $market->rsi = $rsi;
-        $market->stoch_rsi = $stoch_rsi;
+        Chart::where('market_id',$market->id)->delete();
+        foreach ($result['data'] as $item) {
+            $market->charts()->create([
+                'type' => 'data',
+                'time' => $item['c'][6],
+                'data' => $item
+            ]);
+        }
+        foreach ($rsi as $index => $item) {
+            $market->charts()->create([
+                'type' => 'rsi',
+                'time' => $result['data'][$index]['c'][6],
+                'data' => $item
+            ]);
+        }
+        if(!empty($settings['stoch_rsi_period'])) {
+            foreach ($stoch_rsi['stoch_rsi'] as $index => $item) {
+                $market->charts()->create([
+                    'type' => 'stoch_rsi',
+                    'time' => $result['data'][$index]['c'][6],
+                    'data' => $item
+                ]);
+            }
+            foreach ($stoch_rsi['sma_stoch_rsi'] as $index => $item) {
+                $market->charts()->create([
+                    'type' => 'sma_stoch_rsi',
+                    'time' => $result['data'][$index]['c'][6],
+                    'data' => $item
+                ]);
+            }
+        }
+
+//        $market->data = $result['data'];
+//        $market->rsi = $rsi;
+//        $market->stoch_rsi = $stoch_rsi;
         $market->result = $result['finish'];
         $market->save();
         return ["success" => true, "message" => 'Аналіз проведено','logs' => $result['logs']];
@@ -207,7 +241,6 @@ class MarketController extends Controller
                 ($is_stoch ? $stoch_rsi_logic === 'up' : true)){
                 $status = 'bought';
                 $old_balance = $balance;
-                // TODO: зробити скорочення до 0.000000
                 $balance = $close ? $balance / $close : $balance;
                 $balance = floor($balance * (1 - $commission) * 10**$settings['baseAssetPrecision']) / 10**$settings['baseAssetPrecision'];
                 Simulation::create([
@@ -227,7 +260,6 @@ class MarketController extends Controller
                         ($is_stoch ? $stoch_rsi_logic === 'down' : true)) || $is_profit){
                     $status = 'deposit';
                     $old_balance = $balance;
-                    // TODO: зробити скорочення до 0.00
                     $balance = $balance * $close;
                     $balance = floor($balance * (1 - $commission) * 10**$settings['quoteAssetPrecision']) / 10**$settings['quoteAssetPrecision'];
                     Simulation::create([

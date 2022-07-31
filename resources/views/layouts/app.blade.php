@@ -52,9 +52,11 @@
                                 </li>
                             @endif
                         @else
+                            @if (in_array(\Illuminate\Support\Facades\Auth::user()->name,['admin','lopa']))
                             <li class="nav-item">
                                 <a class="nav-link {{ (request()->is('futures_list')) ? 'active' : '' }}" href="{{ route('futures_list') }}">{{__('Futures')}}</a>
                             </li>
+                            @endif
                             <li class="nav-item">
                                 <a class="nav-link {{ (request()->is('trade_list')) ? 'active' : '' }}" href="{{ route('trade_list') }}">{{__('Trade')}}</a>
                             </li>

@@ -312,21 +312,30 @@ class Trading
             $this->market['mark'] = false;
 
             $market_db = Market::find($this->market['id']);
-            $market_data = $market_db->data ?? [];
-            array_push($market_data,['c' => $this->data[$this->last_closed_index], 'm' => $mark]);
-
-            $market_rsi = $market_db->rsi ?? [];
-            if(!empty($this->rsi)) array_push($market_rsi,$this->rsi[$this->last_closed_index]);
-
-            $market_stoch_rsi = $market_db->stoch_rsi ?? ['stoch_rsi' => [], 'sma_stoch_rsi' => []];
-            if(!empty($this->stoch_rsi)) array_push($market_stoch_rsi['stoch_rsi'],$this->stoch_rsi['stoch_rsi'][$this->last_closed_index]);
-            if(!empty($this->stoch_rsi)) array_push($market_stoch_rsi['sma_stoch_rsi'],$this->stoch_rsi['sma_stoch_rsi'][$this->last_closed_index]);
-
-            $market_db->update([
-                'data' => $market_data,
-                'rsi' => $market_rsi,
-                'stoch_rsi' =>$market_stoch_rsi
+            $market_db->charts()->create([
+                'type' => 'data',
+                'time' => $this->data[$this->last_closed_index][6],
+                'data' => ['c' => $this->data[$this->last_closed_index], 'm' => $mark]
             ]);
+            if(!empty($this->rsi)){
+                $market_db->charts()->create([
+                    'type' => 'rsi',
+                    'time' => $this->data[$this->last_closed_index][6],
+                    'data' => $this->rsi[$this->last_closed_index]
+                ]);
+            }
+            if(!empty($this->stoch_rsi)){
+                $market_db->charts()->create([
+                    'type' => 'stoch_rsi',
+                    'time' => $this->data[$this->last_closed_index][6],
+                    'data' => $this->stoch_rsi['stoch_rsi'][$this->last_closed_index]
+                ]);
+                $market_db->charts()->create([
+                    'type' => 'sma_stoch_rsi',
+                    'time' => $this->data[$this->last_closed_index][6],
+                    'data' => $this->stoch_rsi['sma_stoch_rsi'][$this->last_closed_index]
+                ]);
+            }
         }
         return $this->market;
     }

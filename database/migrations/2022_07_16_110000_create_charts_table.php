@@ -14,7 +14,7 @@ return new class extends Migration
     public function up()
     {
         Schema::create('charts', function (Blueprint $table) {
-            $table->id();
+//            $table->id();
             $table->foreignId('market_id')->constrained()->onDelete('cascade');
             $table->string('time');
             $table->string('data');

@@ -64,36 +64,5 @@ Route::get('/test', function(){
 //    echo '<pre>';
 //    var_dump($api->lastRequest);
 //    echo '</pre>';
-
-    $commission = 0.001;
-    $close = 1320.0*1.003;
-    $old_price = 1000.0;
-    $profit_limit = 0.001;
-    $status = 'bought';
-    $balance = 0.07568181;
-
-    $rsi_buy_rule = true;
-    $rsi_sell_rule = false;
-
-    $stoch_buy_rule = true;
-    $stoch_sell_rule = true;
-
-    $is_profit = !(floatval($profit_limit) == 0.0) && $close > $old_price * (1 + floatval($profit_limit));
-
-    if($status == 'deposit' && $rsi_buy_rule && $stoch_buy_rule){
-        $status = 'bought';
-        $balance = 100; // stable set amount of quote for buying
-        // TODO: зробити скорочення до 0.000000
-        $balance = $close ? $balance / $close : $balance;
-        $balance = floor($balance * (1 - $commission) * 10**8) / 10**8;
-    }elseif($status == 'bought' && (($rsi_sell_rule && $stoch_sell_rule) || $is_profit)){
-        $status = 'deposit';
-        // TODO: зробити скорочення до 0.00
-        $balance = $balance * $close;
-        $balance = floor($balance * (1 - $commission) * 10**8) / 10**8;
-    }
-echo '<pre>';
-var_dump($balance);
-echo '</pre>';
 });
 //Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');

@@ -38,7 +38,7 @@ Artisan::command('trade', function(){
                 $subs[] = mb_strtolower($market['name']).'@kline_'.$market['settings']['candle'];
             }
             $markets = $new_markets;
-            $this->info('subs: '.json_encode($subs));
+            $this->info(date('[Y-m-d H:i:s]').' subs: '.json_encode($subs));
             $client->send('{
               "method": "SUBSCRIBE",
               "params": '.json_encode($subs).',
@@ -61,9 +61,9 @@ Artisan::command('trade', function(){
                         }
                     }
                     $proc_time = (microtime(true) - $proc_start)*1000;
-                    if($proc_time > 1000) $this->info('proc time: ' . $proc_time);
+                    if($proc_time > 1000) $this->info(date('[Y-m-d H:i:s]').' proc time: ' . $proc_time);
                 }else{
-                    $this->info('message: ' . $message);
+                    $this->info(date('[Y-m-d H:i:s]').' message: ' . $message);
                 }
             }
         } catch (\WebSocket\ConnectionException $e) {
