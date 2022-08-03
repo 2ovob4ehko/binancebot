@@ -235,7 +235,7 @@ class Trading
             }
         }elseif($this->status == 'bought') {
 
-            $is_profit = !(floatval($this->settings['profit_limit']) == 0.0) && $close > $this->old_price * (1 + floatval($this->settings['profit_limit']));
+            $is_profit = !(floatval($this->settings['profit_limit']) == 0.0) && !(floatval($this->old_price) == 0.0) && $close > $this->old_price * (1 + floatval($this->settings['profit_limit']));
 
             if (($rsi_sell_rule && $stoch_sell_rule) || $is_profit) {
                 if($is_profit) $this->console->info('market ' . $this->market['id'] . ' $close: '.$close.
