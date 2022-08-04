@@ -186,9 +186,10 @@ class Trading
 
 
         if($this->status == 'deposit' && $rsi_buy_rule && $stoch_buy_rule){
+            $this->console->info('market ' . $this->market['id'] . ' $rsi: '.$this->rsi[$this->last_index].
+                ' <= '.$this->settings['rsi_min']);
             $this->status = 'bought';
             $this->balance = floatval($this->settings['start_balance']); // stable set amount of quote for buying
-            // TODO: зробити скорочення до 0.000000
             if($this->market['is_trade']){
                 try{
                     $res = $this->market['api']->marketQuoteBuy($this->market['name'],$this->balance);
@@ -241,7 +242,6 @@ class Trading
                 if($is_profit) $this->console->info('market ' . $this->market['id'] . ' $close: '.$close.
                     ' old_price: '.$this->old_price.' profit_limit: '.$this->settings['profit_limit']);
                 $this->status = 'deposit';
-                // TODO: зробити скорочення до 0.00
                 if ($this->market['is_trade']) {
                     try {
                         $res = $this->market['api']->marketSell($this->market['name'], $this->balance);
