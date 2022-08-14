@@ -39,7 +39,7 @@
                                                 | <i>баланс:</i>&nbsp;<b>{{$market->settings['start_balance']}}</b>
                                             @endif
                                         </div>
-                                        <div class="ms-auto">
+                                        <div class="ms-auto flex-shrink-0">
                                             @if($market->is_online || $market->is_trade)
                                                 <i class="fa-solid fa-money-bill-trend-up"></i>
                                             @endif

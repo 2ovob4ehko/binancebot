@@ -50,11 +50,11 @@ Route::get('/test', function(){
     // array_filter($api->account()['balances'],function($item){return $item['asset'] === 'BTC';});
     // $api->marketQuoteBuyTest('BTCUSDT',10); //marketQuoteBuy
     // $api->marketSellTest('BTCUSDT',0.0004); //marketSell
-    // $api->sell('BTCUAH','0.00016','1100000') // продаж бітка по ціні
+//     $api->sell('BTCUAH','0.00016','1100000') // продаж бітка по ціні
 //    try{
-////        $api->marginTypeFuture('BTCUSDT',true);
+//        $res = $api->orders('BTCUAH');
 //        echo '<pre>';
-//        var_dump($api->accountFuture()['positions']['BTCUSDT']);
+//        var_dump($res);
 //        echo '</pre>';
 //    }catch (Exception $e){
 //        echo '<pre>';

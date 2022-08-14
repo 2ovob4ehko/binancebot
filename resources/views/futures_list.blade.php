@@ -42,9 +42,12 @@
                                                 | <i>Шорт профіт:</i>&nbsp;<b>{{$market->settings['short_profit']}}%</b>
                                             @endif
                                         </div>
-                                        <div class="ms-auto">
-                                            @if($market->is_online || $market->is_trade)
-                                                <i class="fa-solid fa-money-bill-trend-up"></i>
+                                        <div class="ms-auto flex-shrink-0">
+                                            @if($market->is_online)
+                                                <i class="fa-solid fa-money-bill-trend-up text-primary"></i>
+                                            @endif
+                                            @if($market->is_trade)
+                                                <i class="fa-solid fa-money-bill-trend-up text-success"></i>
                                             @endif
 {{--                                            @if($market->upload_status === 'uploading')--}}
 {{--                                                <span class="badge bg-secondary">База завантажується</span>--}}

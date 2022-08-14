@@ -86,6 +86,72 @@ class BinanceSDK extends API
     }
 
     /**
+     * @param string $side BUY, SELL
+     * @param string $symbol
+     * @param string $positionSide LONG, SHORT
+     * @param $quantity
+     * @param $price
+     * @param string $type
+     * @param array $flags
+     * @return array
+     * @throws \Exception
+     */
+    public function orderFuture(string $side, string $symbol, string $positionSide, $quantity, $price, string $type = "LIMIT", array $flags = [])
+    {
+        $opt = [
+            "fapi" => true,
+            "symbol" => $symbol,
+            "side" => $side,
+            "positionSide" => $positionSide,
+            "type" => $type,
+            "quantity" => $quantity,
+            "recvWindow" => 60000,
+        ];
+
+        // someone has preformated there 8 decimal point double already
+        // dont do anything, leave them do whatever they want
+        if (gettype($price) !== "string") {
+            // for every other type, lets format it appropriately
+            $price = number_format($price, 8, '.', '');
+        }
+
+        if (is_numeric($quantity) === false) {
+            // WPCS: XSS OK.
+            echo "warning: quantity expected numeric got " . gettype($quantity) . PHP_EOL;
+        }
+
+        if (is_string($price) === false) {
+            // WPCS: XSS OK.
+            echo "warning: price expected string got " . gettype($price) . PHP_EOL;
+        }
+
+        if ($type === "LIMIT" || $type === "STOP_LOSS_LIMIT" || $type === "TAKE_PROFIT_LIMIT") {
+            $opt["price"] = $price;
+            $opt["timeInForce"] = "GTC";
+        }
+
+        if ($type === "MARKET" && isset($flags['isQuoteOrder']) && $flags['isQuoteOrder']) {
+            unset($opt['quantity']);
+            $opt['quoteOrderQty'] = $quantity;
+        }
+
+        if (isset($flags['stopPrice'])) {
+            $opt['stopPrice'] = $flags['stopPrice'];
+        }
+
+        if (isset($flags['icebergQty'])) {
+            $opt['icebergQty'] = $flags['icebergQty'];
+        }
+
+        if (isset($flags['newOrderRespType'])) {
+            $opt['newOrderRespType'] = $flags['newOrderRespType'];
+        }
+
+        $qstring = "v1/order";
+        return $this->httpRequest($qstring, "POST", $opt, true);
+    }
+
+    /**
      * @param string $isIsolated 'TRUE' 'FALSE'
      * @param string $symbol
      * @param $quantity
