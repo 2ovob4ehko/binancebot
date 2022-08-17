@@ -129,44 +129,51 @@
                                     </div>
                                 </form>
                                 @if($market->settings)
-                                <div class="analysis_list_wrapper opened"
-                                     data-group="market-{{$market->id}}"
-                                     data-min="{{$market->settings['rsi_min']}}"
-                                     data-max="{{$market->settings['rsi_max']}}"
-                                     data-data='{{json_encode($market->chartsData())}}'
-                                     data-rsi='{{json_encode($market->chartsRsi())}}'
-                                     data-stochrsi='{{json_encode($market->chartsStochRsi())}}'
-                                     data-smastochrsi='{{json_encode($market->chartsSmaStochRsi())}}'>
-                                    <div class="row">
-                                        <div class="col-3"><b>Результат</b></div>
-                                        <div class="col-9">{{$market->result}}</div>
-                                    </div>
-                                    <div class="candleChart"></div>
-                                    <div class="rsiChart"></div>
-                                    <div class="stochRsiChart"></div>
-                                    @if(!empty($market->simulations) && $market->simulations->count())
-                                        <div class="row mx-0">
-                                            <div class="col p-1 bg-light"><b>Дія</b></div>
-                                            <div class="col p-1 bg-light"><b>Сума до</b></div>
-                                            <div class="col p-1 bg-light"><b>Сума після</b></div>
-                                            <div class="col p-1 bg-light"><b>Ціна</b></div>
-                                            <div class="col p-1 bg-light"><b>RSI</b></div>
-                                            <div class="col p-1 bg-light"><b>Час</b></div>
+                                    <div class="analysis_list_wrapper opened"
+                                         data-group="market-{{$market->id}}"
+                                         data-min="{{$market->settings['rsi_min']}}"
+                                         data-max="{{$market->settings['rsi_max']}}"
+                                         data-data='{{json_encode($market->chartsData())}}'
+                                         data-rsi='{{json_encode($market->chartsRsi())}}'
+                                         data-stochrsi='{{json_encode($market->chartsStochRsi())}}'
+                                         data-smastochrsi='{{json_encode($market->chartsSmaStochRsi())}}'>
+                                        <div class="mb-3">
+                                            Графік
+                                            <a href="{{ route('market', ['id' => $market->id, 'page' => request()->input('page')+1]) }}" class="btn btn-secondary btn-sm">Назад</a>
+                                            @if(request()->input('page') > 1)
+                                                <a href="{{ route('market', ['id' => $market->id, 'page' => request()->input('page')-1]) }}" class="btn btn-secondary btn-sm">Вперед</a>
+                                            @endif
                                         </div>
-                                        <div class="table_striped">
-                                        @foreach($market->simulations as $sim)
+                                        <div class="row">
+                                            <div class="col-3"><b>Результат</b></div>
+                                            <div class="col-9">{{$market->result}}</div>
+                                        </div>
+                                        <div class="candleChart"></div>
+                                        <div class="rsiChart"></div>
+                                        <div class="stochRsiChart"></div>
+                                        @if(!empty($market->simulations) && $market->simulations->count())
                                             <div class="row mx-0">
-                                                <div class="col p-1">{{$sim->action === 'buy' ? 'Купівля' : 'Продаж'}}</div>
-                                                <div class="col p-1">{{$sim->value}}</div>
-                                                <div class="col p-1">{{$sim->result}}</div>
-                                                <div class="col p-1">{{$sim->price}}</div>
-                                                <div class="col p-1">{{$sim->rsi}}</div>
-                                                <div class="col p-1">{{$sim->time}}</div>
+                                                <div class="col p-1 bg-light"><b>Дія</b></div>
+                                                <div class="col p-1 bg-light"><b>Сума до</b></div>
+                                                <div class="col p-1 bg-light"><b>Сума після</b></div>
+                                                <div class="col p-1 bg-light"><b>Ціна</b></div>
+                                                <div class="col p-1 bg-light"><b>RSI</b></div>
+                                                <div class="col p-1 bg-light"><b>Час</b></div>
                                             </div>
-                                        @endforeach
-                                        </div>
-                                    @endif
-                                </div>
+                                            <div class="table_striped">
+                                            @foreach($market->simulations as $sim)
+                                                <div class="row mx-0">
+                                                    <div class="col p-1">{{$sim->action === 'buy' ? 'Купівля' : 'Продаж'}}</div>
+                                                    <div class="col p-1">{{$sim->value}}</div>
+                                                    <div class="col p-1">{{$sim->result}}</div>
+                                                    <div class="col p-1">{{$sim->price}}</div>
+                                                    <div class="col p-1">{{$sim->rsi}}</div>
+                                                    <div class="col p-1">{{$sim->time}}</div>
+                                                </div>
+                                            @endforeach
+                                            </div>
+                                        @endif
+                                    </div>
                                 @endif
                             @endif
                         </div>

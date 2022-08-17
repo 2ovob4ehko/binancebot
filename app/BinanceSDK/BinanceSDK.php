@@ -85,6 +85,45 @@ class BinanceSDK extends API
         return $this->httpRequest("v1/marginType",'POST', $params, true);
     }
 
+    public function buyFuture(string $symbol, string $positionSide, $quantity, $price, string $type = "LIMIT", array $flags = [])
+    {
+        return $this->orderFuture("BUY", $symbol, $positionSide, $quantity, $price, $type, $flags);
+    }
+
+    public function sellFuture(string $symbol, string $positionSide, $quantity, $price, string $type = "LIMIT", array $flags = [])
+    {
+        return $this->orderFuture("SELL", $symbol, $positionSide, $quantity, $price, $type, $flags);
+    }
+
+    public function buyMarketFuture(string $symbol, string $positionSide, $quantity, array $flags = [])
+    {
+        return $this->orderFuture("BUY", $symbol, $positionSide, $quantity, 0, "MARKET", $flags);
+    }
+
+    public function sellMarketFuture(string $symbol, string $positionSide, $quantity, array $flags = [])
+    {
+        $c = $this->numberOfDecimals($this->exchangeInfo()['symbols'][$symbol]['filters'][2]['minQty']);
+        $quantity = $this->floorDecimal($quantity, $c);
+
+        return $this->orderFuture("SELL", $symbol, $positionSide, $quantity, 0, "MARKET", $flags);
+    }
+
+    public function buyMarketQuoteFuture(string $symbol, string $positionSide, $quantity, array $flags = [])
+    {
+        $flags['isQuoteOrder'] = true;
+
+        return $this->orderFuture("BUY", $symbol, $positionSide, $quantity, 0, "MARKET", $flags);
+    }
+
+    public function sellMarketQuoteFuture(string $symbol, string $positionSide, $quantity, array $flags = [])
+    {
+        $flags['isQuoteOrder'] = true;
+        $c = $this->numberOfDecimals($this->exchangeInfo()['symbols'][$symbol]['filters'][2]['minQty']);
+        $quantity = $this->floorDecimal($quantity, $c);
+
+        return $this->orderFuture("SELL", $symbol, $positionSide, $quantity, 0, "MARKET", $flags);
+    }
+
     /**
      * @param string $side BUY, SELL
      * @param string $symbol

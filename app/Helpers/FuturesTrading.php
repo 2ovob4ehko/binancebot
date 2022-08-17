@@ -4,6 +4,7 @@ namespace App\Helpers;
 
 use App\BinanceSDK\BinanceSDK;
 use App\Models\Market;
+use App\Models\Order;
 use App\Models\Simulation;
 
 class FuturesTrading
@@ -13,7 +14,8 @@ class FuturesTrading
     public $ticker;
     public $settings;
     public $status;
-    public $old_price;
+    public $old_balance;
+    public $balance;
 
     // <symbol>@ticker
     // "P": "250.00",      // Price change percent
@@ -85,7 +87,7 @@ class FuturesTrading
         if($this->status == 'sell'){ // need to buy
             $this->makeBuy();
         }elseif($this->status == 'buy'){ // need to sell
-
+            $this->makeSell();
         }
 
         return $this->market;
@@ -95,22 +97,57 @@ class FuturesTrading
     {
         $trade_OK = false;
         if(floatval($this->ticker['P']) >= floatval($this->settings['h24_long'])){
-            // Купити лонг х1
-            // Створити лімітний ордер на +4% від ціни покупки
             if($this->market['is_trade']){
                 try{
+                    // Купити лонг х1
                     $this->market['api']->leverageFuture($this->market['name'],intval($this->settings['long_leverage']));
                     $this->market['api']->marginTypeFuture($this->market['name'],true);
-                    //$res = $this->market['api']->marginTypeFuture($this->market['name'],true);
+                    $buyRes = $this->market['api']->buyMarketQuoteFuture($this->market['name'], 'LONG', $this->settings['long_balance']);
+                    $this->old_balance = floatval($this->settings['long_balance']);
+                    $this->balance = floatval($buyRes['origQty']);
+                    // Створити лімітний ордер на +4% від ціни покупки
+                    $price = floatval($buyRes['price']) * (1 + floatval($this->settings['long_profit'])/100);
+                    $sellRes = $this->market['api']->sellFuture($this->market['name'], 'LONG', $buyRes['origQty'], $price);
+                    Order::create([
+                        'market_id' => $this->market['id'],
+                        'binance_id' => $sellRes['orderId'],
+                        'side' => $sellRes['side'],
+                        'quantity' => $sellRes['origQty'],
+                        'price' => $sellRes['price'],
+                        'status' => $sellRes['status']
+                    ]);
 
                     $trade_OK = true;
                 }catch (\Exception $e){
                     $this->console->info('market '.$this->market['id'].' buy error: ' . $e->getMessage());
                 }
             }else{
+                $commission = 0;
+                $this->old_balance = floatval($this->settings['long_balance']);
+                $this->balance = $this->ticker['c'] ? $this->old_balance / floatval($this->ticker['c']) : $this->old_balance;
+                $this->balance = floor($this->balance * (1 - $commission) * 10**8) / 10**8;
                 $trade_OK = true;
             }
+            if($trade_OK){
+                Simulation::create([
+                    'market_id' => $this->market['id'],
+                    'action' => 'buy',
+                    'value' => $this->old_balance,
+                    'result' => $this->balance,
+                    'price' => $this->ticker['c'],
+                    'rsi' => 0,
+                    'stoch_rsi' => 0,
+                    'time' => date("Y-m-d H:i:s",intval($this->ticker['C'])/1000)
+                ]);
+            }
         }
+        return $trade_OK;
+    }
+
+    function makeSell()
+    {
+        $trade_OK = false;
+
         return $trade_OK;
     }
 
@@ -125,7 +162,7 @@ class FuturesTrading
                 $this->status = $simulation->action;
                 $this->old_price = $simulation->price;
             }else{
-                $this->status = 'buy';
+                $this->status = 'sell';
                 $this->old_price = 0;
             }
         }

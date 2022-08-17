@@ -26,6 +26,7 @@ class Trading
     public $balance;
     public $old_balance;
     public $stoch_rsi_logic;
+    public $old_price;
 
     /**
      * Trading constructor.
@@ -132,16 +133,19 @@ class Trading
             $this->status = $this->market['status'];
             $this->balance = array_key_exists('balance',$this->market) ? $this->market['balance'] : floatval($this->settings['start_balance']);
             $this->old_balance = array_key_exists('old_balance',$this->market) ? $this->market['old_balance'] : floatval($this->settings['start_balance']);
+            $this->old_price = array_key_exists('old_price',$this->market) ? $this->market['old_price'] : 0;
         }else{
             $simulation = Simulation::where('market_id',$this->market['id'])->latest('id')->first();
             if($simulation){
                 $this->status = $simulation->action === 'buy' ? 'bought' : 'deposit';
                 $this->balance = $simulation->result;
                 $this->old_balance = $simulation->value;
+                $this->old_price = $simulation->price;
             }else{
                 $this->status = 'deposit';
                 $this->balance = floatval($this->settings['start_balance']);
                 $this->old_balance = floatval($this->settings['start_balance']);
+                $this->old_price = 0;
             }
         }
     }
@@ -170,9 +174,9 @@ class Trading
         }
     }
 
-    function onDeposit($commission,$close,$old_balance)
+    function onDeposit($commission,$close)
     {
-        $trade_OK = true;
+        $trade_OK = false;
         $this->console->info('market ' . $this->market['id'] . ' $rsi: '.$this->rsi[$this->last_index].
             ' <= '.$this->settings['rsi_min']);
         $this->status = 'bought';
@@ -189,8 +193,8 @@ class Trading
                         $commission_sum += floatval($fill['commission']);
                     }
                 }
-                $old_balance = floatval($res['cummulativeQuoteQty']);
-                $close = $old_balance / $this->balance;
+                $this->old_balance = floatval($res['cummulativeQuoteQty']);
+                $close = $this->old_balance / $this->balance;
                 $this->balance = $this->balance - $commission_sum;
 
                 if(floatval($this->settings['profit_limit']) !== 0.0){
@@ -205,8 +209,8 @@ class Trading
                         'status' => $res['status']
                     ]);
                 }
+                $trade_OK = true;
             }catch (\Exception $e){
-                $trade_OK = false;
                 $this->console->info('market '.$this->market['id'].' buy error: ' . $e->getMessage());
                 if(str_contains($e->getMessage(), 'MIN_NOTIONAL')){
                     $this->market['mark'] = 'мала сума закупки';
@@ -219,12 +223,13 @@ class Trading
         }else{
             $this->balance = $close ? $this->balance / $close : $this->balance;
             $this->balance = floor($this->balance * (1 - $commission) * 10**$this->settings['baseAssetPrecision']) / 10**$this->settings['baseAssetPrecision'];
+            $trade_OK = true;
         }
         if($trade_OK){
             Simulation::create([
                 'market_id' => $this->market['id'],
                 'action' => 'buy',
-                'value' => $old_balance,
+                'value' => $this->old_balance,
                 'result' => $this->balance,
                 'price' => $close,
                 'rsi' => $this->is_rsi ? $this->rsi[$this->last_index] : 0,
@@ -236,48 +241,41 @@ class Trading
         return $trade_OK;
     }
 
-    function onBought($commission,$close,$old_balance,$rsi_sell_rule,$stoch_sell_rule)
+    function onBought($commission,$close,$rsi_sell_rule,$stoch_sell_rule)
     {
-        $trade_OK = true;
-        if(floatval($this->settings['profit_limit']) !== 0.0){
-            $order = Order::where('market_id',$this->market['id'])
-                ->where('side','SELL')
-                ->whereIn('status',['NEW','PARTIALLY_FILLED'])
-                ->latest()
-                ->first();
-            if(!$order){
-                $this->status = 'deposit';
-                $this->balance = floatval($order->quantity) * floatval($order->price);
-                $this->old_balance = floatval($order->quantity);
-                return true;
-            }
-            $res = $this->market['api']->orderStatus($this->market['name'],$order->binance_id);
-            $order->status = $res['status'];
-            $order->save();
-            if($res['status'] !== 'NEW' && $res['status'] !== 'PARTIALLY_FILLED'){
-                $this->status = 'deposit';
-                if($res['status'] === 'FILLED'){
-                    $this->balance = $res['cummulativeQuoteQty'];
-                    $this->old_balance = floatval($res['origQty']);
-                    Simulation::create([
-                        'market_id' => $this->market['id'],
-                        'action' => 'sell',
-                        'value' => floatval($res['origQty']),
-                        'result' => $this->balance,
-                        'price' => floatval($order->price),
-                        'rsi' => 0,
-                        'stoch_rsi' => 0,
-                        'time' => date("Y-m-d H:i:s", intval($this->trade['T']) / 1000)
-                    ]);
-                    $this->market['mark'] = 'sell';
-                }else{
+        $trade_OK = false;
+        if ($this->market['is_trade']) {
+            if(floatval($this->settings['profit_limit']) !== 0.0){
+                $order = Order::where('market_id',$this->market['id'])
+                    ->where('side','SELL')
+                    ->whereIn('status',['NEW','PARTIALLY_FILLED'])
+                    ->latest()
+                    ->first();
+                if(!$order){
+                    $this->status = 'deposit';
                     $this->balance = floatval($order->quantity) * floatval($order->price);
                     $this->old_balance = floatval($order->quantity);
+                    return true;
                 }
-            }
-        }elseif($rsi_sell_rule && $stoch_sell_rule) {
-            $this->status = 'deposit';
-            if ($this->market['is_trade']) {
+                $res = $this->market['api']->orderStatus($this->market['name'],$order->binance_id);
+                $order->status = $res['status'];
+                $order->save();
+                if($res['status'] !== 'NEW' && $res['status'] !== 'PARTIALLY_FILLED'){
+                    $this->status = 'deposit';
+                    $trade_OK = true;
+                    if($res['status'] === 'FILLED'){
+                        $this->balance = $res['cummulativeQuoteQty'];
+                        $this->old_balance = floatval($res['origQty']);
+                        $close = floatval($order->price);
+                        $this->market['mark'] = 'sell';
+                    }else{
+                        $this->balance = floatval($order->quantity) * floatval($order->price);
+                        $this->old_balance = floatval($order->quantity);
+                        $close = floatval($order->price);
+                    }
+                }
+            }elseif($rsi_sell_rule && $stoch_sell_rule) {
+                $this->status = 'deposit';
                 try {
                     $res = $this->market['api']->marketSell($this->market['name'], $this->balance);
                     $this->console->info('market ' . $this->market['id'] . ' sell: ' . json_encode($res));
@@ -292,8 +290,8 @@ class Trading
                     $old_balance = floatval($res['executedQty']);
                     $close = $this->balance / $old_balance;
                     $this->balance = $this->balance - $commission_sum;
+                    $trade_OK = true;
                 } catch (\Exception $e) {
-                    $trade_OK = false;
                     $this->console->info('market ' . $this->market['id'] . ' sell error: ' . $e->getMessage());
                     if (str_contains($e->getMessage(), 'MIN_NOTIONAL')) {
                         $this->market['mark'] = 'мала сума закупки';
@@ -303,23 +301,27 @@ class Trading
                         $this->telegram_log('market ' . $this->market['name'] . ' ' . $this->market['id'] . ' sell error: ' . $e->getMessage());
                     }
                 }
-            } else {
+            }
+        }else{
+            $is_profit = !(floatval($this->settings['profit_limit']) == 0.0) && $close > $this->old_price * (1 + floatval($this->settings['profit_limit']));
+            if(($rsi_sell_rule && $stoch_sell_rule) || $is_profit) {
+                $trade_OK = true;
                 $this->balance = $this->balance * $close;
                 $this->balance = floor($this->balance * (1 - $commission) * 10 ** $this->settings['quoteAssetPrecision']) / 10 ** $this->settings['quoteAssetPrecision'];
             }
-            if ($trade_OK) {
-                Simulation::create([
-                    'market_id' => $this->market['id'],
-                    'action' => 'sell',
-                    'value' => $old_balance,
-                    'result' => $this->balance,
-                    'price' => $close,
-                    'rsi' => $this->is_rsi ? $this->rsi[$this->last_index] : 0,
-                    'stoch_rsi' => $this->is_stoch ? $this->stoch_rsi['stoch_rsi'][$this->last_index] : 0,
-                    'time' => date("Y-m-d H:i:s", intval($this->trade['T']) / 1000)
-                ]);
-                $this->market['mark'] = 'sell';
-            }
+        }
+        if ($trade_OK) {
+            Simulation::create([
+                'market_id' => $this->market['id'],
+                'action' => 'sell',
+                'value' => $this->old_balance,
+                'result' => $this->balance,
+                'price' => $close,
+                'rsi' => $this->is_rsi ? $this->rsi[$this->last_index] : 0,
+                'stoch_rsi' => $this->is_stoch ? $this->stoch_rsi['stoch_rsi'][$this->last_index] : 0,
+                'time' => date("Y-m-d H:i:s", intval($this->trade['T']) / 1000)
+            ]);
+            $this->market['mark'] = 'sell';
         }
         return $trade_OK;
     }
@@ -329,7 +331,7 @@ class Trading
         $commission = array_key_exists('commission', $this->settings) ? $this->settings['commission'] : 0;
         $close = $this->trade['c'];
         $trade_OK = true;
-        $old_balance = $this->balance;
+        $this->old_balance = $this->balance;
 
         $rsi_buy_rule = !$this->is_rsi || $this->rsi[$this->last_index] <= $this->settings['rsi_min'];
         $rsi_sell_rule = intval($this->settings['rsi_max']) > 0 &&
@@ -339,14 +341,15 @@ class Trading
         $stoch_sell_rule = !$this->is_stoch || $this->stoch_rsi_logic === 'down';
 
         if($this->status == 'deposit' && $rsi_buy_rule && $stoch_buy_rule){
-            $trade_OK = $this->onDeposit($commission,$close,$old_balance);
+            $trade_OK = $this->onDeposit($commission,$close);
         }elseif($this->status == 'bought') {
-            $trade_OK = $this->onBought($commission,$close,$old_balance,$rsi_sell_rule,$stoch_sell_rule);
+            $trade_OK = $this->onBought($commission,$close,$rsi_sell_rule,$stoch_sell_rule);
         }
         if($trade_OK){
             $this->market['status'] = $this->status;
             $this->market['balance'] = $this->balance;
-            $this->market['old_balance'] = $old_balance;
+            $this->market['old_balance'] = $this->old_balance;
+            $this->market['old_price'] = $close;
         }
     }
 

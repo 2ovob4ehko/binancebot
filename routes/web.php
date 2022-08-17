@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::group(['middleware' => ['auth']], function () {
     Route::get('/', [HomeController::class, 'index']);
-    Route::get('/market/{id}', [MarketController::class, 'show']);
+    Route::get('/market/{id}', [MarketController::class, 'show'])->name('market');
     Route::post('/market', [MarketController::class, 'save']);
     Route::delete('/market/{id}', [MarketController::class, 'delete']);
     Route::post('/market_analysis/{id}', [MarketController::class, 'analysis']);
