@@ -27,6 +27,7 @@ class Trading
     public $old_balance;
     public $stoch_rsi_logic;
     public $old_price;
+    public $test;
 
     /**
      * Trading constructor.
@@ -34,7 +35,7 @@ class Trading
      * @param $trade
      * @param $console
      */
-    public function __construct($market,$trade,$console)
+    public function __construct($market,$trade,$console,$test = false)
     {
         $this->market = $market;
         $this->trade = $trade;
@@ -44,6 +45,7 @@ class Trading
         $this->last_index = count($this->data)-1;
         $this->last_closed_index = count($this->data)-2;
         $this->next = ($this->data[$this->last_index][0] === $trade['t']) ? 0 : 1;
+        $this->test = $test;
     }
 
     /**
@@ -177,14 +179,14 @@ class Trading
     function onDeposit($commission,$close)
     {
         $trade_OK = false;
-        $this->console->info('market ' . $this->market['id'] . ' $rsi: '.$this->rsi[$this->last_index].
+        if($this->console) $this->console->info('market ' . $this->market['id'] . ' $rsi: '.$this->rsi[$this->last_index].
             ' <= '.$this->settings['rsi_min']);
         $this->status = 'bought';
         $this->balance = floatval($this->settings['start_balance']); // stable set amount of quote for buying
         if($this->market['is_trade']){
             try{
                 $res = $this->market['api']->marketQuoteBuy($this->market['name'],$this->balance);
-                $this->console->info('market '.$this->market['id'].' buy: ' . json_encode($res));
+                if($this->console)  $this->console->info('market '.$this->market['id'].' buy: ' . json_encode($res));
                 $this->balance = 0;
                 $commission_sum = 0;
                 foreach ($res['fills'] as $fill){
@@ -211,7 +213,7 @@ class Trading
                 }
                 $trade_OK = true;
             }catch (\Exception $e){
-                $this->console->info('market '.$this->market['id'].' buy error: ' . $e->getMessage());
+                if($this->console)  $this->console->info('market '.$this->market['id'].' buy error: ' . $e->getMessage());
                 if(str_contains($e->getMessage(), 'MIN_NOTIONAL')){
                     $this->market['mark'] = 'мала сума закупки';
                 }elseif(str_contains($e->getMessage(), 'insufficient balance')){
@@ -222,10 +224,10 @@ class Trading
             }
         }else{
             $this->balance = $close ? $this->balance / $close : $this->balance;
-            $this->balance = floor($this->balance * (1 - $commission) * 10**$this->settings['baseAssetPrecision']) / 10**$this->settings['baseAssetPrecision'];
+            $this->balance = floor($this->balance * (1 - $commission) * 10**8) / 10**8;
             $trade_OK = true;
         }
-        if($trade_OK){
+        if($trade_OK && !$this->test){
             Simulation::create([
                 'market_id' => $this->market['id'],
                 'action' => 'buy',
@@ -278,7 +280,7 @@ class Trading
                 $this->status = 'deposit';
                 try {
                     $res = $this->market['api']->marketSell($this->market['name'], $this->balance);
-                    $this->console->info('market ' . $this->market['id'] . ' sell: ' . json_encode($res));
+                    if($this->console)  $this->console->info('market ' . $this->market['id'] . ' sell: ' . json_encode($res));
                     $this->balance = 0;
                     $commission_sum = 0;
                     foreach ($res['fills'] as $fill) {
@@ -292,7 +294,7 @@ class Trading
                     $this->balance = $this->balance - $commission_sum;
                     $trade_OK = true;
                 } catch (\Exception $e) {
-                    $this->console->info('market ' . $this->market['id'] . ' sell error: ' . $e->getMessage());
+                    if($this->console)  $this->console->info('market ' . $this->market['id'] . ' sell error: ' . $e->getMessage());
                     if (str_contains($e->getMessage(), 'MIN_NOTIONAL')) {
                         $this->market['mark'] = 'мала сума закупки';
                     } elseif (str_contains($e->getMessage(), 'insufficient balance')) {
@@ -305,12 +307,13 @@ class Trading
         }else{
             $is_profit = !(floatval($this->settings['profit_limit']) == 0.0) && $close > $this->old_price * (1 + floatval($this->settings['profit_limit']));
             if(($rsi_sell_rule && $stoch_sell_rule) || $is_profit) {
+                $this->status = 'deposit';
                 $trade_OK = true;
                 $this->balance = $this->balance * $close;
-                $this->balance = floor($this->balance * (1 - $commission) * 10 ** $this->settings['quoteAssetPrecision']) / 10 ** $this->settings['quoteAssetPrecision'];
+                $this->balance = floor($this->balance * (1 - $commission) * 10 ** 8) / 10 ** 8;
             }
         }
-        if ($trade_OK) {
+        if ($trade_OK && !$this->test) {
             Simulation::create([
                 'market_id' => $this->market['id'],
                 'action' => 'sell',
@@ -329,7 +332,7 @@ class Trading
     function makeTrade()
     {
         $commission = array_key_exists('commission', $this->settings) ? $this->settings['commission'] : 0;
-        $close = $this->trade['c'];
+        $close = floatval($this->trade['c']);
         $trade_OK = true;
         $this->old_balance = $this->balance;
 
@@ -363,12 +366,11 @@ class Trading
         $this->makeAnalis();
         $this->getLastBalance();
         $this->getStochRsiLogic();
-        $this->checkPrecision();
 
 //        2) Робити аналіз покупки чи продажу. Якщо є покупка чи продаж, але не створилася нова свічка, тоді треба зберегти $mark в $market. Якщо створилася нова свічка то скинути $market['mark'] на false, і записати в базу теперішній $mark.
         $this->makeTrade();
 
-        if($this->next){
+        if($this->next && !$this->test){
             $mark = $this->market['mark'];
             $this->market['mark'] = false;
 
