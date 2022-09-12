@@ -223,6 +223,7 @@ class Trading
                 }
             }
         }else{
+            $this->old_balance = $this->balance;
             $this->balance = $close ? $this->balance / $close : $this->balance;
             $this->balance = floor($this->balance * (1 - $commission) * 10**8) / 10**8;
             $trade_OK = true;

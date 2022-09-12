@@ -23,14 +23,14 @@ class FuturesTrading
 
     /*
      * TODO:
-     * 1) Якщо це покупка Зробити запит на 24 %
-     * 1.1) Якщо вище за норму (1%) тоді купуємо лонг (х1)
-     * 1.2) Якщо купили Виставити лімітний ордер по тейк профіту (4%) від ціни покупки
-     * 2) Якщо це продаж Перевіряємо чи ордер ще відкритий
-     * 2.1) Якщо закритий Переходимо до покупки
-     * 2.2) Якщо відкритий Перевіряємо на скільки змінилася ціна теперішня в порівнянні з відкритим ордером головним
-     * 2.2.1) Якщо ціна впала нижче (2%) Купуємо другорядний шорт (х15)
-     * 2.2.2) Якщо ціна впала нижче (7%) Продаємо лонг і Продаємо шорт
+     * [X] 1) Якщо це покупка Зробити запит на 24 %
+     * [X] 1.1) Якщо вище за норму (1%) тоді купуємо лонг (х1)
+     * [X] 1.2) Якщо купили Виставити лімітний ордер по тейк профіту (4%) від ціни покупки
+     * [X] 2) Якщо це продаж Перевіряємо чи ордер ще відкритий
+     * [X] 2.1) Якщо закритий Переходимо до покупки
+     * [Х] 2.2) Якщо відкритий Перевіряємо на скільки змінилася ціна теперішня в порівнянні з відкритим ордером головним
+     * [ ] 2.2.1) Якщо ціна впала нижче (2%) Купуємо другорядний шорт (х15)
+     * [ ] 2.2.2) Якщо ціна впала нижче (7%) Продаємо лонг і Продаємо шорт
      */
 
     /**
@@ -83,11 +83,16 @@ class FuturesTrading
     {
         $this->getLastBalance();
         $this->checkPrecision();
+        $trade_OK = true;
 
         if($this->status == 'sell'){ // need to buy
-            $this->makeBuy();
+            $trade_OK = $this->makeBuy();
         }elseif($this->status == 'buy'){ // need to sell
-            $this->makeSell();
+            $trade_OK = $this->makeSell();
+        }
+
+        if($trade_OK){
+            $this->market['status'] = $this->status;
         }
 
         return $this->market;
@@ -111,7 +116,7 @@ class FuturesTrading
                     Order::create([
                         'market_id' => $this->market['id'],
                         'binance_id' => $sellRes['orderId'],
-                        'side' => $sellRes['side'],
+                        'side' => $sellRes['side'].'_LONG',
                         'quantity' => $sellRes['origQty'],
                         'price' => $sellRes['price'],
                         'status' => $sellRes['status']
@@ -139,6 +144,7 @@ class FuturesTrading
                     'stoch_rsi' => 0,
                     'time' => date("Y-m-d H:i:s",intval($this->ticker['C'])/1000)
                 ]);
+                $this->status = 'buy';
             }
         }
         return $trade_OK;
@@ -147,6 +153,81 @@ class FuturesTrading
     function makeSell()
     {
         $trade_OK = false;
+        // Перевірка чи ордер ще відкритий
+        $order = Order::where('market_id',$this->market['id'])
+            ->where('side','SELL_LONG')
+            ->whereIn('status',['NEW','PARTIALLY_FILLED'])
+            ->latest()
+            ->first();
+        if(!$order){
+            $this->status = 'sell';
+            $this->balance = floatval($order->quantity) * floatval($order->price);
+            $this->old_balance = floatval($order->quantity);
+            return true;
+        }
+        $res = $this->market['api']->orderFutureStatus($this->market['name'],$order->binance_id);
+        $order->status = $res['status'];
+        $order->save();
+        if($res['status'] !== 'NEW' && $res['status'] !== 'PARTIALLY_FILLED'){ // Ордер закритий - переходимо до покупки
+            $this->status = 'sell';
+            $trade_OK = true;
+            if($res['status'] === 'FILLED'){
+                $this->balance = $res['cumQuote'];
+                $this->old_balance = floatval($res['origQty']);
+                $close = floatval($order->price);
+            }else{
+                $this->balance = floatval($order->quantity) * floatval($order->price);
+                $this->old_balance = floatval($order->quantity);
+                $close = floatval($order->price);
+            }
+        }else{ // Ордер відкритий - перевіряємо зміну ціни
+            // Якщо ціна впала нижче (2%) Купуємо другорядний шорт (х15)
+            if((!array_key_exists('short_created',$this->market) || !$this->market['short_created']) &&
+                floatval($order->price) * (1 - floatval($this->settings['long_loss'])/100) >= $this->ticker['c']){
+
+                $this->market['api']->leverageFuture($this->settings['short_market'],intval($this->settings['short_leverage']));
+                $this->market['api']->marginTypeFuture($this->settings['short_market'],true);
+                $buyRes = $this->market['api']->buyMarketQuoteFuture($this->settings['short_market'], 'SHORT', $this->settings['short_balance']);
+
+                $this->market['short_created'] = floatval($buyRes['origQty']);
+            }
+            // Якщо ціна впала нижче (7%) Продаємо лонг і Продаємо шорт
+            if(floatval($order->price) * (1 - floatval($this->settings['short_profit'])/100) >= $this->ticker['c']){
+                $this->market['api']->cancelFuture($this->market['name'],$order->binance_id);
+
+                $this->market['api']->marginTypeFuture($this->market['name'],true);
+                $this->market['api']->leverageFuture($this->market['name'],intval($this->settings['long_leverage']));
+                $sellLongRes = $this->market['api']->sellMarketFuture($this->market['name'], 'LONG', $order->quantity);
+
+                $this->market['api']->marginTypeFuture($this->settings['short_market'],true);
+                $this->market['api']->leverageFuture($this->settings['short_market'],intval($this->settings['short_leverage']));
+                $sellShortRes = $this->market['api']->sellMarketFuture($this->settings['short_market'], 'SHORT', $this->market['short_created']);
+
+                $order->status = 'CANCELED';
+                $order->save();
+
+                $this->status = 'sell';
+                $this->balance = floatval($order->quantity) * floatval($order->price);
+                $this->old_balance = floatval($order->quantity);
+
+                $this->market['short_created'] = false;
+                $trade_OK = true;
+            }
+        }
+
+        if($trade_OK){
+            Simulation::create([
+                'market_id' => $this->market['id'],
+                'action' => 'sell',
+                'value' => $this->old_balance,
+                'result' => $this->balance,
+                'price' => $close,
+                'rsi' => 0,
+                'stoch_rsi' => 0,
+                'time' => date("Y-m-d H:i:s",intval($this->ticker['C'])/1000)
+            ]);
+            $this->status = 'sell';
+        }
 
         return $trade_OK;
     }

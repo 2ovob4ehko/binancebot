@@ -14,6 +14,31 @@ class BinanceSDK extends API
 
 //    TODO: Add Binance functions for FUTURES orders
 // https://binance-docs.github.io/apidocs/futures/en/#query-order-user_data
+
+    public function cancelFuture(string $symbol, $orderid, $flags = [])
+    {
+        $params = [
+            'fapi' => true,
+            "symbol" => $symbol,
+            "orderId" => $orderid,
+        ];
+        return $this->httpRequest("v1/order", "DELETE", array_merge($params, $flags), true);
+    }
+
+    /**
+     * @param string $symbol
+     * @param $orderid
+     * @return array|mixed
+     * @throws \Exception
+     */
+    public function orderFutureStatus(string $symbol, $orderid)
+    {
+        return $this->httpRequest("v1/order", "GET", [
+            'fapi' => true,
+            "symbol" => $symbol,
+            "orderId" => $orderid,
+        ], true);
+    }
     /**
      * @return array|mixed
      * @throws \Exception
