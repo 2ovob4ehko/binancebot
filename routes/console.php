@@ -25,7 +25,7 @@ Artisan::command('trade', function(){
     $restart_time = 0;
     $markets = [];
     while (true) {
-        if((time() - $restart_time) / 60 > 10){ //every 10 minutes
+        if((time() - $restart_time) / 60 > 5){ //every 10 minutes
             $restart_time = time();
             $client = new WebSocket\Client("wss://stream.binance.com:9443/ws",[
                 'timeout' => 600

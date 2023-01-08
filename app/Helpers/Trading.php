@@ -28,6 +28,9 @@ class Trading
     public $stoch_rsi_logic;
     public $old_price;
     public $test;
+    public $current_buy_again_lower;
+    public $current_buy_again_balance;
+    public $buy_again_history;
 
     /**
      * Trading constructor.
@@ -76,6 +79,9 @@ class Trading
                     'data' => $candles,
                     'mark' => false,
                     'is_trade' => $market->is_trade,
+                    'current_buy_again_lower' => floatval($market->settings['buy_again_lower']) ?? 0,
+                    'current_buy_again_balance' => floatval($market->settings['start_balance']),
+                    'buy_again_history' => [],
                     'api' => $api
                 ];
             }
@@ -127,7 +133,7 @@ class Trading
     }
 
     /**
-     * Getting balance from market data or from simulation history
+     * Getting balance from market data or from trade_data
      */
     function getLastBalance()
     {
@@ -136,18 +142,27 @@ class Trading
             $this->balance = array_key_exists('balance',$this->market) ? $this->market['balance'] : floatval($this->settings['start_balance']);
             $this->old_balance = array_key_exists('old_balance',$this->market) ? $this->market['old_balance'] : floatval($this->settings['start_balance']);
             $this->old_price = array_key_exists('old_price',$this->market) ? $this->market['old_price'] : 0;
+            $this->current_buy_again_lower = floatval($this->market['current_buy_again_lower']);
+            $this->current_buy_again_balance = floatval($this->market['current_buy_again_balance']);
+            $this->buy_again_history = $this->market['buy_again_history'];
         }else{
-            $simulation = Simulation::where('market_id',$this->market['id'])->latest('id')->first();
-            if($simulation){
-                $this->status = $simulation->action === 'buy' ? 'bought' : 'deposit';
-                $this->balance = $simulation->result;
-                $this->old_balance = $simulation->value;
-                $this->old_price = $simulation->price;
+            $market = Market::find($this->market['id']);
+            if($market && !empty($market->trade_data)){
+                $this->status = $market->trade_data['status'];
+                $this->balance = $market->trade_data['balance'];
+                $this->old_balance = $market->trade_data['old_balance'];
+                $this->old_price = $market->trade_data['old_price'];
+                $this->current_buy_again_lower = floatval($market->trade_data['current_buy_again_lower']);
+                $this->current_buy_again_balance = floatval($market->trade_data['current_buy_again_balance']);
+                $this->buy_again_history = $market->trade_data['buy_again_history'];
             }else{
                 $this->status = 'deposit';
                 $this->balance = floatval($this->settings['start_balance']);
                 $this->old_balance = floatval($this->settings['start_balance']);
                 $this->old_price = 0;
+                $this->current_buy_again_lower = floatval($this->market['current_buy_again_lower']);
+                $this->current_buy_again_balance = floatval($this->market['current_buy_again_balance']);
+                $this->buy_again_history = $this->market['buy_again_history'];
             }
         }
     }
@@ -176,6 +191,12 @@ class Trading
         }
     }
 
+    /**
+     * Try to create buy order
+     * @param $commission
+     * @param $close
+     * @return bool
+     */
     function onDeposit($commission,$close)
     {
         $trade_OK = false;
@@ -229,6 +250,10 @@ class Trading
             $trade_OK = true;
         }
         if($trade_OK && !$this->test){
+            $this->current_buy_again_balance = floatval($this->settings['start_balance']);
+            $this->current_buy_again_lower = floatval($this->settings['buy_again_lower']) ?? 0;
+            $this->buy_again_history = [['value' => floatval($this->old_balance), 'price' => floatval($close), 'result' => floatval($this->balance)]];
+
             Simulation::create([
                 'market_id' => $this->market['id'],
                 'action' => 'buy',
@@ -244,6 +269,14 @@ class Trading
         return $trade_OK;
     }
 
+    /**
+     * Try to create sell order
+     * @param $commission
+     * @param $close
+     * @param $rsi_sell_rule
+     * @param $stoch_sell_rule
+     * @return bool
+     */
     function onBought($commission,$close,$rsi_sell_rule,$stoch_sell_rule)
     {
         $trade_OK = false;
@@ -280,7 +313,7 @@ class Trading
             }elseif($rsi_sell_rule && $stoch_sell_rule) {
                 $this->status = 'deposit';
                 try {
-                    $res = $this->market['api']->marketSell($this->market['name'], $this->balance);
+                    $res = $this->market['api']->marketSell($this->market['name'], $this->getAvgBuyAgain()['value']);
                     if($this->console)  $this->console->info('market ' . $this->market['id'] . ' sell: ' . json_encode($res));
                     $this->balance = 0;
                     $commission_sum = 0;
@@ -306,11 +339,11 @@ class Trading
                 }
             }
         }else{
-            $is_profit = !(floatval($this->settings['profit_limit']) == 0.0) && $close > $this->old_price * (1 + floatval($this->settings['profit_limit']));
+            $is_profit = !(floatval($this->settings['profit_limit']) == 0.0) && $close > $this->getAvgBuyAgain()['price'];
             if(($rsi_sell_rule && $stoch_sell_rule) || $is_profit) {
                 $this->status = 'deposit';
                 $trade_OK = true;
-                $this->balance = $this->balance * $close;
+                $this->balance = $this->getAvgBuyAgain()['value'] * $close;
                 $this->balance = floor($this->balance * (1 - $commission) * 10 ** 8) / 10 ** 8;
             }
         }
@@ -327,6 +360,97 @@ class Trading
             ]);
             $this->market['mark'] = 'sell';
         }
+        return $trade_OK;
+    }
+
+    /**
+     * Try to create buy order again
+     * @param $commission
+     * @param $close
+     * @return bool
+     */
+    function onBuyAgain($commission,$close)
+    {
+        $trade_OK = false;
+
+        if($close < ($this->old_price * (1 - floatval($this->current_buy_again_lower))) &&
+            count($this->buy_again_history) < $this->settings['buy_again_count_limit']){
+            if($this->market['is_trade']){
+                try{
+                    $res = $this->market['api']->marketQuoteBuy($this->market['name'],$this->current_buy_again_balance);
+                    if($this->console)  $this->console->info('market '.$this->market['id'].' buy_again: ' . json_encode($res));
+                    $this->balance = 0;
+                    $commission_sum = 0;
+                    foreach ($res['fills'] as $fill){
+                        $this->balance += floatval($fill['qty']);
+                        if(str_contains($this->market['name'], $fill['commissionAsset'])){
+                            $commission_sum += floatval($fill['commission']);
+                        }
+                    }
+                    $this->old_balance = floatval($res['cummulativeQuoteQty']);
+                    $close = $this->old_balance / $this->balance;
+                    $this->balance = $this->balance - $commission_sum;
+
+                    if(floatval($this->settings['profit_limit']) !== 0.0){
+                        // cancel prev limit order
+                        $order = Order::where('market_id',$this->market['id'])
+                            ->where('side','SELL')
+                            ->whereIn('status',['NEW','PARTIALLY_FILLED'])
+                            ->latest()
+                            ->first();
+                        $res = $this->market['api']->cancel($this->market['name'],$order->binance_id);
+                        $order->status = $res['status']; // CANCELED
+                        $order->save();
+                        // create new limit order
+                        $price = $this->getAvgBuyAgain()['price'];
+                        $res = $this->market['api']->sell($this->market['name'], $this->getAvgBuyAgain()['value'], $price);
+                        Order::create([
+                            'market_id' => $this->market['id'],
+                            'binance_id' => $res['orderId'],
+                            'side' => $res['side'],
+                            'quantity' => $res['origQty'],
+                            'price' => $res['price'],
+                            'status' => $res['status']
+                        ]);
+                    }
+                    $trade_OK = true;
+                }catch (\Exception $e){
+                    if($this->console)  $this->console->info('market '.$this->market['id'].' buy_again error: ' . $e->getMessage());
+                    if(str_contains($e->getMessage(), 'MIN_NOTIONAL')){
+                        $this->market['mark'] = 'мала сума закупки';
+                    }elseif(str_contains($e->getMessage(), 'insufficient balance')){
+                        $this->market['mark'] = 'мало грошей';
+                    }else{
+                        $this->telegram_log('market '.$this->market['name'].' '.$this->market['id'].' buy_again error: ' . $e->getMessage());
+                    }
+                }
+            }else{
+                $this->old_balance = $this->current_buy_again_balance;
+                $this->balance = $close ? $this->current_buy_again_balance / $close : $this->current_buy_again_balance;
+                $this->balance = floor($this->balance * (1 - $commission) * 10**8) / 10**8;
+                $trade_OK = true;
+            }
+        }
+
+        if ($trade_OK && !$this->test) {
+            $this->current_buy_again_balance = floatval($this->current_buy_again_balance) * floatval($this->settings['buy_again_amount_progress']);
+            $this->current_buy_again_lower = floatval($this->current_buy_again_lower) * floatval($this->settings['buy_again_lower_progress']);
+            $this->buy_again_history[] = ['value' => floatval($this->old_balance), 'price' => floatval($close), 'result' => floatval($this->balance)];
+
+            Simulation::create([
+                'market_id' => $this->market['id'],
+                'action' => 'buy',
+                'value' => $this->old_balance,
+                'result' => $this->balance,
+                'price' => $close,
+                'rsi' => $this->is_rsi ? $this->rsi[$this->last_index] : 0,
+                'stoch_rsi' => $this->is_stoch ? $this->stoch_rsi['stoch_rsi'][$this->last_index] : 0,
+                'time' => date("Y-m-d H:i:s",intval($this->trade['T'])/1000)
+            ]);
+
+            $this->market['mark'] = 'buy';
+        }
+
         return $trade_OK;
     }
 
@@ -347,13 +471,19 @@ class Trading
         if($this->status == 'deposit' && $rsi_buy_rule && $stoch_buy_rule){
             $trade_OK = $this->onDeposit($commission,$close);
         }elseif($this->status == 'bought') {
-            $trade_OK = $this->onBought($commission,$close,$rsi_sell_rule,$stoch_sell_rule);
+            $trade_OK = $this->onBuyAgain($commission,$close);
+            if(!$trade_OK){
+                $trade_OK = $this->onBought($commission,$close,$rsi_sell_rule,$stoch_sell_rule);
+            }
         }
         if($trade_OK){
             $this->market['status'] = $this->status;
             $this->market['balance'] = $this->balance;
             $this->market['old_balance'] = $this->old_balance;
             $this->market['old_price'] = $close;
+            $this->market['current_buy_again_lower'] = floatval($this->current_buy_again_lower);
+            $this->market['current_buy_again_balance'] = floatval($this->current_buy_again_balance);
+            $this->market['buy_again_history'] = $this->buy_again_history;
         }
     }
 
@@ -368,7 +498,7 @@ class Trading
         $this->getLastBalance();
         $this->getStochRsiLogic();
 
-//        2) Робити аналіз покупки чи продажу. Якщо є покупка чи продаж, але не створилася нова свічка, тоді треба зберегти $mark в $market. Якщо створилася нова свічка то скинути $market['mark'] на false, і записати в базу теперішній $mark.
+//       Робить аналіз покупки чи продажу. Якщо є покупка чи продаж, але не створилася нова свічка, тоді треба зберегти $mark в $market. Якщо створилася нова свічка то скинути $market['mark'] на false, і записати в базу теперішній $mark.
         $this->makeTrade();
 
         if($this->next && !$this->test){
@@ -401,6 +531,17 @@ class Trading
                 ]);
             }
         }
+        if(!$this->test && array_key_exists('status',$this->market)){
+            Market::where('id',$this->market['id'])->update(['trade_data' => [
+                'status' => $this->market['status'],
+                'balance' => $this->market['balance'],
+                'old_balance' => $this->market['old_balance'],
+                'old_price' => $this->market['old_price'],
+                'current_buy_again_lower' => floatval($this->market['current_buy_again_lower']),
+                'current_buy_again_balance' => floatval($this->market['current_buy_again_balance']),
+                'buy_again_history' => $this->market['buy_again_history'],
+            ]]);
+        }
         return $this->market;
     }
 
@@ -420,8 +561,27 @@ class Trading
         }
     }
 
+    function getAvgBuyAgain()
+    {
+        $sum_values = 0;
+        $sum_results = 0;
+        foreach ($this->buy_again_history as $history_item){
+            $sum_values += floatval($history_item['value']);
+            $sum_results += floatval($history_item['result']);
+        }
+        $avg_price = $sum_values * (1 + floatval($this->settings['profit_limit'])) / $sum_results;
+        return ['price' => $avg_price, 'value' => $sum_results];
+    }
+
     function telegram_log($text)
     {
         file_get_contents('https://api.telegram.org/bot5443827645:AAGY6C0f8YOLvqw9AtdxSoVcDVwuhQKO6PY/sendMessage?chat_id=600558355&text='.urlencode($text));
+    }
+
+    function debug_encode($data)
+    {
+        ob_start();
+        var_dump($data);
+        return ob_get_clean();
     }
 }

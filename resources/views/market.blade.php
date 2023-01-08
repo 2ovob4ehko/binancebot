@@ -115,6 +115,41 @@
                                         </div>
                                     </div>
                                     <hr/>
+                                    <div class="row mx-0">
+                                        <div class="col-12 col-sm-6 col-md-4 p-1">
+                                            <div class="d-flex align-items-center">
+                                                <div class="mx-2">Перша ціна дозакупки (коефіцієнт зниження ціни)</div>
+                                                <div class="col">
+                                                    <input type="text" name="buy_again_lower" value="{{$market->settings['buy_again_lower'] ?? ''}}" class="form-control form-control-sm input_width_limit" placeholder="0.01">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-12 col-sm-6 col-md-4 p-1">
+                                            <div class="d-flex align-items-center">
+                                                <div class="mx-2">Ліміт дозакупок (максимальна кількість)</div>
+                                                <div class="col">
+                                                    <input type="text" name="buy_again_count_limit" value="{{$market->settings['buy_again_count_limit'] ?? ''}}" class="form-control form-control-sm input_width_limit" placeholder="5">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-12 col-sm-6 col-md-4 p-1">
+                                            <div class="d-flex align-items-center">
+                                                <div class="mx-2">Прогресія ціни дозакупок (коефіцієнт зміни коефіцієнта зниження ціни)</div>
+                                                <div class="col">
+                                                    <input type="text" name="buy_again_lower_progress" value="{{$market->settings['buy_again_lower_progress'] ?? ''}}" class="form-control form-control-sm input_width_limit" placeholder="1.5">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-12 col-sm-6 col-md-4 p-1">
+                                            <div class="d-flex align-items-center">
+                                                <div class="mx-2">Прогресія розміру дозакупок (1 - без зміни)</div>
+                                                <div class="col">
+                                                    <input type="text" name="buy_again_amount_progress" value="{{$market->settings['buy_again_amount_progress'] ?? ''}}" class="form-control form-control-sm input_width_limit" placeholder="1.5">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <hr/>
                                     <div class="row mx-0 mb-3">
                                         <div class="col-12 p-1">
                                             <button class="btn btn-success btn-sm" type="submit" title="Зберегти"><i class="fa-solid fa-floppy-disk"></i></button>

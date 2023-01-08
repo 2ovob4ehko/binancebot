@@ -52,6 +52,25 @@ class MarketController extends Controller
         }catch (Exception $e){
             $commission = 0;
         }
+        $settings = [
+            'candle' => $request->candle,
+            'period' => $request->period,
+            'rsi_period' => $request->rsi_period,
+            'stoch_rsi_period' => $request->stoch_rsi_period,
+            'rsi_min' => $request->rsi_min,
+            'rsi_max' => $request->rsi_max,
+            'profit_limit' => $request->profit_limit,
+            'start_balance' => $request->start_balance,
+            'commission' => $commission,
+            'baseAsset' => $baseAsset ?? null,
+            'baseAssetPrecision' => $baseAssetPrecision ?? null,
+            'quoteAsset' => $quoteAsset ?? null,
+            'quoteAssetPrecision' => $quoteAssetPrecision ?? null,
+            'buy_again_lower' => $request->buy_again_lower ?? null,
+            'buy_again_count_limit' => $request->buy_again_count_limit ?? null,
+            'buy_again_lower_progress' => $request->buy_again_lower_progress ?? null,
+            'buy_again_amount_progress' => $request->buy_again_amount_progress ?? null,
+        ];
         if($request->has('id')){
             if(!Auth::user()->markets->contains($request->id)) return redirect('/');
             if($request->has('is_online') || $request->has('is_trade')){
@@ -61,26 +80,13 @@ class MarketController extends Controller
                     'data' => [],
                     'rsi' => [],
                     'result' => '',
-                    'stoch_rsi' => ['stoch_rsi' => [], 'sma_stoch_rsi' => []]
+                    'stoch_rsi' => ['stoch_rsi' => [], 'sma_stoch_rsi' => []],
+                    'trade_data' => null,
                 ]);
             }
             Market::where('id',$request->id)->update([
                 'name' => $name,
-                'settings' => [
-                    'candle' => $request->candle,
-                    'period' => $request->period,
-                    'rsi_period' => $request->rsi_period,
-                    'stoch_rsi_period' => $request->stoch_rsi_period,
-                    'rsi_min' => $request->rsi_min,
-                    'rsi_max' => $request->rsi_max,
-                    'profit_limit' => $request->profit_limit,
-                    'start_balance' => $request->start_balance,
-                    'commission' => $commission,
-                    'baseAsset' => $baseAsset ?? null,
-                    'baseAssetPrecision' => $baseAssetPrecision ?? null,
-                    'quoteAsset' => $quoteAsset ?? null,
-                    'quoteAssetPrecision' => $quoteAssetPrecision ?? null,
-                ],
+                'settings' => $settings,
                 'is_online' => $request->has('is_online'),
                 'is_trade' => $request->has('is_trade')
             ]);
@@ -89,21 +95,7 @@ class MarketController extends Controller
             $market = Market::create([
                 'user_id' => Auth::user()->id,
                 'name' => $name,
-                'settings' => [
-                    'candle' => $request->candle,
-                    'period' => $request->period,
-                    'rsi_period' => $request->rsi_period,
-                    'stoch_rsi_period' => $request->stoch_rsi_period,
-                    'rsi_min' => $request->rsi_min,
-                    'rsi_max' => $request->rsi_max,
-                    'profit_limit' => $request->profit_limit,
-                    'start_balance' => $request->start_balance,
-                    'commission' => $commission,
-                    'baseAsset' => $baseAsset ?? null,
-                    'baseAssetPrecision' => $baseAssetPrecision ?? null,
-                    'quoteAsset' => $quoteAsset ?? null,
-                    'quoteAssetPrecision' => $quoteAssetPrecision ?? null,
-                ],
+                'settings' => $settings,
                 'data' => [],
                 'rsi' => [],
                 'stoch_rsi' => ['stoch_rsi' => [], 'sma_stoch_rsi' => []],

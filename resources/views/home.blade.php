@@ -38,6 +38,18 @@
                                             @if(!empty($market->settings['start_balance']))
                                                 | <i>баланс:</i>&nbsp;<b>{{$market->settings['start_balance']}}</b>
                                             @endif
+                                            @if(!empty($market->settings['buy_again_lower']))
+                                                | <i>перша дозакупка:</i>&nbsp;<b>{{$market->settings['buy_again_lower']}}</b>
+                                            @endif
+                                            @if(!empty($market->settings['buy_again_count_limit']))
+                                                | <i>ліміт дозакупок:</i>&nbsp;<b>{{$market->settings['buy_again_count_limit']}}</b>
+                                            @endif
+                                            @if(!empty($market->settings['buy_again_lower_progress']))
+                                                | <i>прогресія ціни дозакупок:</i>&nbsp;<b>{{$market->settings['buy_again_lower_progress']}}</b>
+                                            @endif
+                                            @if(!empty($market->settings['buy_again_amount_progress']))
+                                                | <i>прогресія розміру дозакупок:</i>&nbsp;<b>{{$market->settings['buy_again_amount_progress']}}</b>
+                                            @endif
                                         </div>
                                         <div class="ms-auto flex-shrink-0">
                                             @if($market->is_online || $market->is_trade)

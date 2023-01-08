@@ -14,7 +14,8 @@ class Market extends Model
         'settings' => 'array',
         'data' => 'array',
         'rsi' => 'array',
-        'stoch_rsi' => 'array'
+        'stoch_rsi' => 'array',
+        'trade_data' => 'array'
     ];
 
     public function user()
