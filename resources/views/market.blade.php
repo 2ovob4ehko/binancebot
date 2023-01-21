@@ -118,6 +118,14 @@
                                     <div class="row mx-0">
                                         <div class="col-12 col-sm-6 col-md-4 p-1">
                                             <div class="d-flex align-items-center">
+                                                <div class="mx-2">Перший розмір дозакупки</div>
+                                                <div class="col">
+                                                    <input type="text" name="buy_again_amount" value="{{$market->settings['buy_again_amount'] ?? ''}}" class="form-control form-control-sm input_width_limit" placeholder="10">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-12 col-sm-6 col-md-4 p-1">
+                                            <div class="d-flex align-items-center">
                                                 <div class="mx-2">Перша ціна дозакупки (коефіцієнт зниження ціни)</div>
                                                 <div class="col">
                                                     <input type="text" name="buy_again_lower" value="{{$market->settings['buy_again_lower'] ?? ''}}" class="form-control form-control-sm input_width_limit" placeholder="0.01">

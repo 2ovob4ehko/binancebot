@@ -50,7 +50,7 @@ class MarketController extends Controller
             $quoteAssetPrecision = $info['quoteAssetPrecision'];
             $commission = floatval($api->commissionFee($name)[0]['takerCommission']);
         }catch (Exception $e){
-            $commission = 0;
+            $commission = 0.001;
         }
         $settings = [
             'candle' => $request->candle,
@@ -67,6 +67,7 @@ class MarketController extends Controller
             'quoteAsset' => $quoteAsset ?? null,
             'quoteAssetPrecision' => $quoteAssetPrecision ?? null,
             'buy_again_lower' => $request->buy_again_lower ?? null,
+            'buy_again_amount' => $request->buy_again_amount ?? null,
             'buy_again_count_limit' => $request->buy_again_count_limit ?? null,
             'buy_again_lower_progress' => $request->buy_again_lower_progress ?? null,
             'buy_again_amount_progress' => $request->buy_again_amount_progress ?? null,
@@ -122,159 +123,47 @@ class MarketController extends Controller
         $market = Market::where('id',$id)->first();
         if($market->is_online || $market->is_trade) return ["success" => false, "message" => 'Онлайн маркет не може проходити аналіз'];;
         $settings = $market->settings;
-        $analysis = new Analysis();
+        Simulation::where('market_id',$market->id)->delete();
+        Chart::where('market_id',$market->id)->delete();
+        Market::where('id',$market->id)->update([
+            'data' => [],
+            'rsi' => [],
+            'result' => '',
+            'stoch_rsi' => ['stoch_rsi' => [], 'sma_stoch_rsi' => []],
+            'trade_data' => null,
+        ]);
 
         $candles = $this->multilimitCSVQuery($market->name,$settings['candle'],$settings['period']);
-//        $candles = $analysis->fakeData();
-        $closed = array_map(function($el){return floatval($el[4]);}, $candles);
-
-        $rsi = $analysis->rsi($closed,$settings['rsi_period']);
-
-        if(!empty($settings['stoch_rsi_period'])){
-            $stoch_rsi = $analysis->stoch_rsi($rsi,$settings['rsi_period'],$settings['stoch_rsi_period']);
-        }else{
-            $stoch_rsi = [];
-        }
-
-        $result = $this->makeSimulation($market,$rsi,$stoch_rsi,$candles);
-
-        Chart::where('market_id',$market->id)->delete();
-        foreach ($result['data'] as $item) {
-            $market->charts()->create([
-                'type' => 'data',
-                'time' => $item['c'][6],
-                'data' => $item
-            ]);
-        }
-        foreach ($rsi as $index => $item) {
-            $market->charts()->create([
-                'type' => 'rsi',
-                'time' => $result['data'][$index]['c'][6],
-                'data' => $item
-            ]);
-        }
-        if(!empty($settings['stoch_rsi_period'])) {
-            foreach ($stoch_rsi['stoch_rsi'] as $index => $item) {
-                $market->charts()->create([
-                    'type' => 'stoch_rsi',
-                    'time' => $result['data'][$index]['c'][6],
-                    'data' => $item
-                ]);
-            }
-            foreach ($stoch_rsi['sma_stoch_rsi'] as $index => $item) {
-                $market->charts()->create([
-                    'type' => 'sma_stoch_rsi',
-                    'time' => $result['data'][$index]['c'][6],
-                    'data' => $item
-                ]);
-            }
-        }
-
-//        $market->data = $result['data'];
-//        $market->rsi = $rsi;
-//        $market->stoch_rsi = $stoch_rsi;
-        $market->result = $result['finish'];
-        $market->save();
-        return ["success" => true, "message" => 'Аналіз проведено','logs' => $result['logs']];
-    }
-
-    private function makeSimulation($market,$rsi,$stoch_rsi,$candles)
-    {
-        $logs = [];
-//        remove old data of the simulation
-        Simulation::where('market_id',$market->id)->delete();
-        $settings = $market->settings;
-        $data = [];
-
-        $balance = floatval($settings['start_balance']);
-        $old_balance = floatval($settings['start_balance']);
-        $commission = array_key_exists('commission', $settings) ? $settings['commission'] : 0;
-        $status = 'deposit';
-        for ($i=0;$i<count($candles);$i++){
-//          next candle if indicator has no data at this time
-            $is_stoch = false;
-            if(!empty($settings['stoch_rsi_period'])){
-                if(!array_key_exists($i,$stoch_rsi['sma_stoch_rsi'])){
-                    array_push($data,['c' => $candles[$i], 'm' => false]);
-                    continue;
-                }
-                $is_stoch = true;
-            }else{
-                if(!array_key_exists($i,$rsi)){
-                    array_push($data,['c' => $candles[$i], 'm' => false]);
-                    continue;
-                }
-            }
-//            getting stoch indicator logic
-            if($is_stoch){
-                $stoch_rsi_logic = '';
-                $sr = $stoch_rsi['stoch_rsi'];
-                $ssr = $stoch_rsi['sma_stoch_rsi'];
-                if(array_key_exists($i-1,$ssr)){
-                    if($sr[$i] > 80 && $ssr[$i] > 80){
-                        if($sr[$i-1] >= $sr[$i] && $ssr[$i-1] >= $ssr[$i] && $sr[$i-1] >= $ssr[$i-1] && $sr[$i] <= $ssr[$i]){
-                            $stoch_rsi_logic = 'down';
-                        }
-                    }elseif($sr[$i] < 20 && $ssr[$i] < 20){
-                        if($sr[$i-1] <= $sr[$i] && $ssr[$i-1] <= $ssr[$i] && $sr[$i-1] <= $ssr[$i-1] && $sr[$i] >= $ssr[$i]){
-                            $stoch_rsi_logic = 'up';
-                        }
-                    }
-                }
-            }
-            $mark = false;
-            $close = floatval($candles[$i][4]);
-
-            $logs[] = '['.date("Y-m-d H:i:s",$candles[$i][6]/1000).'] status: '.$status.' rsi: '.$rsi[$i].
-            ' stoch up '.(int)($is_stoch ? $stoch_rsi_logic === 'up' : true).
-                ' stoch down '.(int)($is_stoch ? $stoch_rsi_logic === 'down' : true);
-
-            if($status == 'deposit' && $rsi[$i] <= $settings['rsi_min'] &&
-                ($is_stoch ? $stoch_rsi_logic === 'up' : true)){
-                $status = 'bought';
-                $old_balance = $balance;
-                $balance = $close ? $balance / $close : $balance;
-                $balance = floor($balance * (1 - $commission) * 10**$settings['baseAssetPrecision']) / 10**$settings['baseAssetPrecision'];
-                Simulation::create([
-                    'market_id' => $market->id,
-                    'action' => 'buy',
-                    'value' => $old_balance,
-                    'result' => $balance,
-                    'price' => $close,
-                    'rsi' => $rsi[$i],
-                    'stoch_rsi' => $is_stoch ? $stoch_rsi['stoch_rsi'][$i] : 0,
-                    'time' => date("Y-m-d H:i:s",$candles[$i][6]/1000)
-                ]);
-                $mark = 'buy';
-            }elseif($status == 'bought'){
-                $is_profit = floatval($settings['profit_limit']) == 0.0 ? false : $balance * $close > $old_balance * (1 + floatval($settings['profit_limit']));
-                if((intval($settings['rsi_max']) > 0 && $rsi[$i] >= $settings['rsi_max'] &&
-                        ($is_stoch ? $stoch_rsi_logic === 'down' : true)) || $is_profit){
-                    $status = 'deposit';
-                    $old_balance = $balance;
-                    $balance = $balance * $close;
-                    $balance = floor($balance * (1 - $commission) * 10**$settings['quoteAssetPrecision']) / 10**$settings['quoteAssetPrecision'];
-                    Simulation::create([
-                        'market_id' => $market->id,
-                        'action' => 'sell',
-                        'value' => $old_balance,
-                        'result' => $balance,
-                        'price' => $close,
-                        'rsi' => $rsi[$i],
-                        'stoch_rsi' => $is_stoch ? $stoch_rsi['stoch_rsi'][$i] : 0,
-                        'time' => date("Y-m-d H:i:s",$candles[$i][6]/1000)
-                    ]);
-                    $mark = 'sell';
-                }
-            }
-            array_push($data,['c' => $candles[$i], 'm' => $mark]);
-        }
-        $currency = $status == 'bought' ? $settings['baseAsset'] : $settings['quoteAsset'];
-        return [
-            'finish' => $balance.' '.$currency,
-            'data' => $data,
-            'logs' => $logs
+        $market_data = [
+            'id' => $market->id,
+            'name' => $market->name,
+            'settings' => $market->settings,
+            'data' => array_slice($candles, -50),
+            'mark' => false,
+            'is_trade' => false,
+            'current_buy_again_lower' => floatval($market->settings['buy_again_lower']) ?? 0,
+            'current_buy_again_balance' => floatval($market->settings['buy_again_amount']),
+            'buy_again_history' => [],
+            'result' => 0,
+            'api' => false
         ];
+
+        for ($i=0;$i<count($candles);$i++){
+            $candle_data = [
+                't' => $candles[$i][0],
+                'o' => $candles[$i][1],
+                'h' => $candles[$i][2],
+                'l' => $candles[$i][3],
+                'c' => $candles[$i][4],
+                'q' => $candles[$i][5],
+                'T' => $candles[$i][6],
+                'i' => $settings['candle']
+            ];
+            $trading = new Trading($market_data, $candle_data, false);
+            $market_data = $trading->addNewCandle();
+        }
+
+        return ["success" => true, "message" => 'Аналіз проведено'];
     }
 
     public static function multilimitQueryS($symbol,$interval,$limit){

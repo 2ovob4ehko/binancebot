@@ -31,6 +31,7 @@ class Trading
     public $current_buy_again_lower;
     public $current_buy_again_balance;
     public $buy_again_history;
+    public $result;
 
     /**
      * Trading constructor.
@@ -80,8 +81,9 @@ class Trading
                     'mark' => false,
                     'is_trade' => $market->is_trade,
                     'current_buy_again_lower' => floatval($market->settings['buy_again_lower']) ?? 0,
-                    'current_buy_again_balance' => floatval($market->settings['start_balance']),
+                    'current_buy_again_balance' => floatval($market->settings['buy_again_amount']),
                     'buy_again_history' => [],
+                    'result' => 0,
                     'api' => $api
                 ];
             }
@@ -145,6 +147,7 @@ class Trading
             $this->current_buy_again_lower = floatval($this->market['current_buy_again_lower']);
             $this->current_buy_again_balance = floatval($this->market['current_buy_again_balance']);
             $this->buy_again_history = $this->market['buy_again_history'];
+            $this->result = $this->market['result'];
         }else{
             $market = Market::find($this->market['id']);
             if($market && !empty($market->trade_data)){
@@ -155,6 +158,7 @@ class Trading
                 $this->current_buy_again_lower = floatval($market->trade_data['current_buy_again_lower']);
                 $this->current_buy_again_balance = floatval($market->trade_data['current_buy_again_balance']);
                 $this->buy_again_history = $market->trade_data['buy_again_history'];
+                $this->result = $market->trade_data['result'];
             }else{
                 $this->status = 'deposit';
                 $this->balance = floatval($this->settings['start_balance']);
@@ -163,6 +167,7 @@ class Trading
                 $this->current_buy_again_lower = floatval($this->market['current_buy_again_lower']);
                 $this->current_buy_again_balance = floatval($this->market['current_buy_again_balance']);
                 $this->buy_again_history = $this->market['buy_again_history'];
+                $this->result = $this->market['result'];
             }
         }
     }
@@ -250,7 +255,7 @@ class Trading
             $trade_OK = true;
         }
         if($trade_OK && !$this->test){
-            $this->current_buy_again_balance = floatval($this->settings['start_balance']);
+            $this->current_buy_again_balance = floatval($this->settings['buy_again_amount']);
             $this->current_buy_again_lower = floatval($this->settings['buy_again_lower']) ?? 0;
             $this->buy_again_history = [['value' => floatval($this->old_balance), 'price' => floatval($close), 'result' => floatval($this->balance)]];
 
@@ -343,11 +348,13 @@ class Trading
             if(($rsi_sell_rule && $stoch_sell_rule) || $is_profit) {
                 $this->status = 'deposit';
                 $trade_OK = true;
+                $this->old_balance = $this->getAvgBuyAgain()['value'];
                 $this->balance = $this->getAvgBuyAgain()['value'] * $close;
                 $this->balance = floor($this->balance * (1 - $commission) * 10 ** 8) / 10 ** 8;
             }
         }
         if ($trade_OK && !$this->test) {
+            $this->result += floatval($this->balance) - floatval($this->getAvgBuyAgain()['prev']);
             Simulation::create([
                 'market_id' => $this->market['id'],
                 'action' => 'sell',
@@ -484,6 +491,7 @@ class Trading
             $this->market['current_buy_again_lower'] = floatval($this->current_buy_again_lower);
             $this->market['current_buy_again_balance'] = floatval($this->current_buy_again_balance);
             $this->market['buy_again_history'] = $this->buy_again_history;
+            $this->market['result'] = $this->result;
         }
     }
 
@@ -540,7 +548,7 @@ class Trading
                 'current_buy_again_lower' => floatval($this->market['current_buy_again_lower']),
                 'current_buy_again_balance' => floatval($this->market['current_buy_again_balance']),
                 'buy_again_history' => $this->market['buy_again_history'],
-            ]]);
+            ],'result' => $this->result]);
         }
         return $this->market;
     }
@@ -570,7 +578,7 @@ class Trading
             $sum_results += floatval($history_item['result']);
         }
         $avg_price = $sum_values * (1 + floatval($this->settings['profit_limit'])) / $sum_results;
-        return ['price' => $avg_price, 'value' => $sum_results];
+        return ['price' => $avg_price, 'value' => $sum_results, 'prev' => $sum_values];
     }
 
     function telegram_log($text)
