@@ -119,7 +119,8 @@ class MarketController extends Controller
 
     public function analysis($id, Request $request)
     {
-        set_time_limit(1000);
+        set_time_limit(100000);
+        ini_set('memory_limit','2048M');
         $market = Market::where('id',$id)->first();
         if($market->is_online || $market->is_trade) return ["success" => false, "message" => 'Онлайн маркет не може проходити аналіз'];;
         $settings = $market->settings;
