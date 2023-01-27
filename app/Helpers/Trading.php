@@ -158,7 +158,7 @@ class Trading
                 $this->current_buy_again_lower = floatval($market->trade_data['current_buy_again_lower']);
                 $this->current_buy_again_balance = floatval($market->trade_data['current_buy_again_balance']);
                 $this->buy_again_history = $market->trade_data['buy_again_history'];
-                $this->result = $market->trade_data['result'];
+                $this->result = $market->result;
             }else{
                 $this->status = 'deposit';
                 $this->balance = floatval($this->settings['start_balance']);
