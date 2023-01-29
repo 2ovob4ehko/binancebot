@@ -368,6 +368,25 @@ class BinanceSDK extends API
         return $this->httpRequest($qstring, "POST", $opt, true);
     }
 
+    /**
+     * marketSell attempts to create a currency order at given market price
+     *
+     * $quantity = 1;
+     * $order = $api->marketSell("BNBBTC", $quantity);
+     *
+     * @param $symbol string the currency symbol
+     * @param $quantity string the quantity required
+     * @param $flags array addtional options for order type
+     * @return array with error message or the order details
+     */
+    public function marketSell(string $symbol, $quantity, array $flags = [])
+    {
+        $c = $this->numberOfDecimals($this->exchangeInfo()['symbols'][$symbol]['filters'][1]['minQty']);
+        $quantity = $this->floorDecimal($quantity, $c);
+
+        return $this->order("SELL", $symbol, $quantity, 0, "MARKET", $flags);
+    }
+
     protected function httpRequest(string $url, string $method = "GET", array $params = [], bool $signed = false)
     {
         if (function_exists('curl_init') === false) {

@@ -41,28 +41,6 @@ Auth::routes([
 ]);
 
 Route::get('/test', function(){
-//    $user = User::find(2);
-//    $api = new App\BinanceSDK\BinanceSDK(
-//        $user->setting('api_key')->value ?? '',
-//        $user->setting('secret_key')->value ?? ''
-//    );
-    // $api->commissionFee('BTCUAH')[0]['takerCommission'];
-    // array_filter($api->account()['balances'],function($item){return $item['asset'] === 'BTC';});
-    // $api->marketQuoteBuyTest('BTCUSDT',10); //marketQuoteBuy
-    // $api->marketSellTest('BTCUSDT',0.0004); //marketSell
-//     $api->sell('BTCUAH','0.00016','1100000') // продаж бітка по ціні
-//    try{
-//        $res = $api->orders('BTCUAH');
-//        echo '<pre>';
-//        var_dump($res);
-//        echo '</pre>';
-//    }catch (Exception $e){
-//        echo '<pre>';
-//        var_dump($e->getMessage());
-//        echo '</pre>';
-//    }
-//    echo '<pre>';
-//    var_dump($api->lastRequest);
-//    echo '</pre>';
+
 });
 //Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');

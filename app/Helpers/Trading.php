@@ -224,9 +224,25 @@ class Trading
                 $this->old_balance = floatval($res['cummulativeQuoteQty']);
                 $close = $this->old_balance / $this->balance;
                 $this->balance = $this->balance - $commission_sum;
-
+                $trade_OK = true;
+            }catch (\Exception $e){
+                if($this->console)  $this->console->info('market '.$this->market['id'].' buy error: ' . $e->getMessage());
+                if(str_contains($e->getMessage(), 'MIN_NOTIONAL')){
+                    $this->market['mark'] = 'мала сума закупки';
+                }elseif(str_contains($e->getMessage(), 'insufficient balance')){
+                    $this->market['mark'] = 'мало грошей';
+                }else{
+                    $this->telegram_log('market '.$this->market['name'].' '.$this->market['id'].' buy error: ' . $e->getMessage());
+                }
+            }
+            try{
                 if(floatval($this->settings['profit_limit']) !== 0.0){
                     $price = $close * (1 + floatval($this->settings['profit_limit']));
+//                  correcting quantity
+                    $minQty = $this->market['api']->exchangeInfo()['symbols'][$this->market['name']]['filters'][1]['minQty'];
+                    $c = $this->market['api']->numberOfDecimals($minQty);
+                    $this->balance = floor($this->balance * pow(10, $c)) / pow(10, $c);
+
                     $res = $this->market['api']->sell($this->market['name'], $this->balance, $price);
                     Order::create([
                         'market_id' => $this->market['id'],
@@ -237,9 +253,8 @@ class Trading
                         'status' => $res['status']
                     ]);
                 }
-                $trade_OK = true;
             }catch (\Exception $e){
-                if($this->console)  $this->console->info('market '.$this->market['id'].' buy error: ' . $e->getMessage());
+                if($this->console)  $this->console->info('market '.$this->market['id'].' buy, limit_sell error: ' . $e->getMessage());
                 if(str_contains($e->getMessage(), 'MIN_NOTIONAL')){
                     $this->market['mark'] = 'мала сума закупки';
                 }elseif(str_contains($e->getMessage(), 'insufficient balance')){
@@ -398,28 +413,11 @@ class Trading
                     $close = $this->old_balance / $this->balance;
                     $this->balance = $this->balance - $commission_sum;
 
-                    if(floatval($this->settings['profit_limit']) !== 0.0){
-                        // cancel prev limit order
-                        $order = Order::where('market_id',$this->market['id'])
-                            ->where('side','SELL')
-                            ->whereIn('status',['NEW','PARTIALLY_FILLED'])
-                            ->latest()
-                            ->first();
-                        $res = $this->market['api']->cancel($this->market['name'],$order->binance_id);
-                        $order->status = $res['status']; // CANCELED
-                        $order->save();
-                        // create new limit order
-                        $price = $this->getAvgBuyAgain()['price'];
-                        $res = $this->market['api']->sell($this->market['name'], $this->getAvgBuyAgain()['value'], $price);
-                        Order::create([
-                            'market_id' => $this->market['id'],
-                            'binance_id' => $res['orderId'],
-                            'side' => $res['side'],
-                            'quantity' => $res['origQty'],
-                            'price' => $res['price'],
-                            'status' => $res['status']
-                        ]);
-                    }
+                    // correcting quantity
+                    $minQty = $this->market['api']->exchangeInfo()['symbols'][$this->market['name']]['filters'][1]['minQty'];
+                    $c = $this->market['api']->numberOfDecimals($minQty);
+                    $this->balance = floor($this->balance * pow(10, $c)) / pow(10, $c);
+
                     $trade_OK = true;
                 }catch (\Exception $e){
                     if($this->console)  $this->console->info('market '.$this->market['id'].' buy_again error: ' . $e->getMessage());
@@ -443,6 +441,42 @@ class Trading
             $this->current_buy_again_balance = floatval($this->current_buy_again_balance) * floatval($this->settings['buy_again_amount_progress']);
             $this->current_buy_again_lower = floatval($this->current_buy_again_lower) * floatval($this->settings['buy_again_lower_progress']);
             $this->buy_again_history[] = ['value' => floatval($this->old_balance), 'price' => floatval($close), 'result' => floatval($this->balance)];
+
+            if($this->market['is_trade']) {
+                try {
+                    if (floatval($this->settings['profit_limit']) !== 0.0) {
+                        // cancel prev limit order
+                        $order = Order::where('market_id', $this->market['id'])
+                            ->where('side', 'SELL')
+                            ->whereIn('status', ['NEW', 'PARTIALLY_FILLED'])
+                            ->latest()
+                            ->first();
+                        $res = $this->market['api']->cancel($this->market['name'], $order->binance_id);
+                        $order->status = $res['status']; // CANCELED
+                        $order->save();
+                        // create new limit order
+                        $price = $this->getAvgBuyAgain()['price'];
+                        $res = $this->market['api']->sell($this->market['name'], $this->getAvgBuyAgain()['value'], $price);
+                        Order::create([
+                            'market_id' => $this->market['id'],
+                            'binance_id' => $res['orderId'],
+                            'side' => $res['side'],
+                            'quantity' => $res['origQty'],
+                            'price' => $res['price'],
+                            'status' => $res['status']
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    if ($this->console) $this->console->info('market ' . $this->market['id'] . ' buy_again, limit_sell error: ' . $e->getMessage());
+                    if (str_contains($e->getMessage(), 'MIN_NOTIONAL')) {
+                        $this->market['mark'] = 'мала сума закупки';
+                    } elseif (str_contains($e->getMessage(), 'insufficient balance')) {
+                        $this->market['mark'] = 'мало грошей';
+                    } else {
+                        $this->telegram_log('market ' . $this->market['name'] . ' ' . $this->market['id'] . ' buy_again error: ' . $e->getMessage());
+                    }
+                }
+            }
 
             Simulation::create([
                 'market_id' => $this->market['id'],
