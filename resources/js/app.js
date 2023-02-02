@@ -25,6 +25,15 @@ $(document).ready(function(){
                 console.log(error)
             })
     })
+    $('.clear_market').click(function(){
+        axios.delete('/market/'+$(this).attr('data-id')+'/charts')
+            .then(function (response) {
+                location.reload()
+            })
+            .catch(function (error) {
+                console.log(error)
+            })
+    })
     $('.delete_market').click(function(){
         axios.delete('/market/'+$(this).attr('data-id'))
             .then(function (response) {

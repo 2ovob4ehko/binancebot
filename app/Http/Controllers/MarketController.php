@@ -75,17 +75,17 @@ class MarketController extends Controller
         if($request->has('id')){
             if(!Auth::user()->markets->contains($request->id)) return redirect('/');
             $market = Market::find($request->id);
-            if((!$market->is_online && $request->has('is_online')) || (!$market->is_trade && $request->has('is_trade'))){
-                Simulation::where('market_id',$request->id)->delete();
-                Chart::where('market_id',$request->id)->delete();
-                $market->update([
-                    'data' => [],
-                    'rsi' => [],
-                    'result' => '',
-                    'stoch_rsi' => ['stoch_rsi' => [], 'sma_stoch_rsi' => []],
-                    'trade_data' => null,
-                ]);
-            }
+//            if((!$market->is_online && $request->has('is_online')) || (!$market->is_trade && $request->has('is_trade'))){
+//                Simulation::where('market_id',$request->id)->delete();
+//                Chart::where('market_id',$request->id)->delete();
+//                $market->update([
+//                    'data' => [],
+//                    'rsi' => [],
+//                    'result' => '',
+//                    'stoch_rsi' => ['stoch_rsi' => [], 'sma_stoch_rsi' => []],
+//                    'trade_data' => null,
+//                ]);
+//            }
             $market->update([
                 'name' => $name,
                 'settings' => $settings,
@@ -109,6 +109,22 @@ class MarketController extends Controller
             $id = $market->id;
         }
         return redirect('/market/'.$id)->with('message', 'Налаштування збережено');
+    }
+
+    public function clear_charts($id, Request $request)
+    {
+        if(!Auth::user()->markets->contains($id)) return redirect('/');
+        $market = Market::find($id);
+        Simulation::where('market_id',$id)->delete();
+        Chart::where('market_id',$id)->delete();
+        $market->update([
+            'data' => [],
+            'rsi' => [],
+            'result' => '',
+            'stoch_rsi' => ['stoch_rsi' => [], 'sma_stoch_rsi' => []],
+            'trade_data' => null,
+        ]);
+        return ["success" => true, "message" => 'Маркет очищено'];
     }
 
     public function delete($id, Request $request)

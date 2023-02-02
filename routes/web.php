@@ -24,6 +24,7 @@ Route::group(['middleware' => ['auth']], function () {
     Route::get('/market/{id}', [MarketController::class, 'show'])->name('market');
     Route::post('/market', [MarketController::class, 'save']);
     Route::delete('/market/{id}', [MarketController::class, 'delete']);
+    Route::delete('/market/{id}/charts', [MarketController::class, 'clear_charts']);
     Route::post('/market_analysis/{id}', [MarketController::class, 'analysis']);
     Route::get('/uploadCSVFromBinance/{market}', [MarketController::class,'uploadCSVFromBinance']);
     Route::get('/settings', [SettingController::class, 'index'])->name('settings');
