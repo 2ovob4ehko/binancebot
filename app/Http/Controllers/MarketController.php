@@ -74,10 +74,11 @@ class MarketController extends Controller
         ];
         if($request->has('id')){
             if(!Auth::user()->markets->contains($request->id)) return redirect('/');
-            if($request->has('is_online') || $request->has('is_trade')){
+            $market = Market::find($request->id);
+            if((!$market->is_online && $request->has('is_online')) || (!$market->is_trade && $request->has('is_trade'))){
                 Simulation::where('market_id',$request->id)->delete();
                 Chart::where('market_id',$request->id)->delete();
-                Market::where('id',$request->id)->update([
+                $market->update([
                     'data' => [],
                     'rsi' => [],
                     'result' => '',
@@ -85,7 +86,7 @@ class MarketController extends Controller
                     'trade_data' => null,
                 ]);
             }
-            Market::where('id',$request->id)->update([
+            $market->update([
                 'name' => $name,
                 'settings' => $settings,
                 'is_online' => $request->has('is_online'),
