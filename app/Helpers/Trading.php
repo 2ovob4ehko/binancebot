@@ -535,6 +535,10 @@ class Trading
     public function addNewCandle()
     {
         if($this->settings['candle'] !== $this->trade['i']) return $this->market;
+
+        $market_db = Market::find($this->market['id']);
+        if(!$market_db) return $this->market;
+
         $this->addCandleData();
         $this->makeAnalis();
         $this->getLastBalance();
@@ -547,7 +551,6 @@ class Trading
             $mark = $this->market['mark'];
             $this->market['mark'] = false;
 
-            $market_db = Market::find($this->market['id']);
             $market_db->charts()->create([
                 'type' => 'data',
                 'time' => $this->data[$this->last_closed_index][6],
