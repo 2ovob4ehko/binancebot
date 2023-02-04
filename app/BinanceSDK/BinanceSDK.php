@@ -564,10 +564,18 @@ class BinanceSDK extends API
         return $this->floorDecimal($price, $c);
     }
 
-    public function filterQty(string $symbol, $qty)
+    public function filterQty(string $symbol, $qty, $price)
     {
-        $minQty = $this->exchangeInfo()['symbols'][$symbol]['filters'][1]['minQty'];
+        $filters = $this->exchangeInfo()['symbols'][$symbol]['filters'];
+        $minQty = $filters[1]['minQty'];
+        $minNotional = $filters[2]['minNotional'];
         $c = $this->numberOfDecimals($minQty);
-        return $this->floorDecimal($qty, $c);
+        $qty = $this->floorDecimal($qty, $c);
+        $quot = $qty * $price;
+        while ($quot < $minNotional) {
+            $qty += $minQty;
+            $quot = $qty * $price;
+        }
+        return $qty;
     }
 }

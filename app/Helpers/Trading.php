@@ -238,7 +238,7 @@ class Trading
             try{
                 if(floatval($this->settings['profit_limit']) !== 0.0){
                     $price = $this->market['api']->filterPrice($this->market['name'],$close * (1 + floatval($this->settings['profit_limit'])));
-                    $this->balance = $this->market['api']->filterQty($this->market['name'],$this->balance);
+                    $this->balance = $this->market['api']->filterQty($this->market['name'],$this->balance,$price);
 
                     $res = $this->market['api']->sell($this->market['name'], $this->balance, $price);
                     Order::create([
@@ -305,9 +305,10 @@ class Trading
                     ->latest()
                     ->first();
                 if(!$order){
-                    $this->status = 'deposit';
-                    $this->balance = floatval($this->market['balance']) * floatval($this->market['old_price']);
-                    $this->old_balance = floatval($this->market['balance']);
+                    $this->market['mark'] = 'Немає ордера';
+//                    $this->status = 'deposit';
+//                    $this->balance = floatval($this->market['balance']) * floatval($this->market['old_price']);
+//                    $this->old_balance = floatval($this->market['balance']);
                     return true;
                 }
                 $res = $this->market['api']->orderStatus($this->market['name'],$order->binance_id);
@@ -453,7 +454,7 @@ class Trading
                         $order->save();
                         // create new limit order
                         $price = $this->market['api']->filterPrice($this->market['name'],$this->getAvgBuyAgain()['price']);
-                        $quantity = $this->market['api']->filterQty($this->market['name'],$this->getAvgBuyAgain()['value']);
+                        $quantity = $this->market['api']->filterQty($this->market['name'],$this->getAvgBuyAgain()['value'],$price);
                         $res = $this->market['api']->sell($this->market['name'], $quantity, $price);
                         Order::create([
                             'market_id' => $this->market['id'],

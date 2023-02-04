@@ -75,17 +75,6 @@ class MarketController extends Controller
         if($request->has('id')){
             if(!Auth::user()->markets->contains($request->id)) return redirect('/');
             $market = Market::find($request->id);
-//            if((!$market->is_online && $request->has('is_online')) || (!$market->is_trade && $request->has('is_trade'))){
-//                Simulation::where('market_id',$request->id)->delete();
-//                Chart::where('market_id',$request->id)->delete();
-//                $market->update([
-//                    'data' => [],
-//                    'rsi' => [],
-//                    'result' => '',
-//                    'stoch_rsi' => ['stoch_rsi' => [], 'sma_stoch_rsi' => []],
-//                    'trade_data' => null,
-//                ]);
-//            }
             $market->update([
                 'name' => $name,
                 'settings' => $settings,
@@ -130,6 +119,7 @@ class MarketController extends Controller
     public function delete($id, Request $request)
     {
         if(!Auth::user()->markets->contains($id)) return redirect('/');
+        Simulation::where('market_id',$id)->delete();
         Market::where('id',$id)->delete();
         return ["success" => true, "message" => 'Маркет видалено'];
     }
