@@ -2,11 +2,11 @@
 
 namespace App\Helpers;
 
+use App\BinanceSDK\BinanceSDK;
 use App\Http\Controllers\MarketController;
 use App\Models\Market;
 use App\Models\Order;
 use App\Models\Simulation;
-use Binance\API;
 
 class Trading
 {
@@ -71,7 +71,7 @@ class Trading
                 $user = $market->user;
                 $api_key = $user->setting('api_key')->value ?? '';
                 $secret_key = $user->setting('secret_key')->value ?? '';
-                $api = new API($api_key, $secret_key);
+                $api = new BinanceSDK($api_key, $secret_key);
                 $api->caOverride = true;
                 $output[$market->id] = [
                     'id' => $market->id,
@@ -237,11 +237,8 @@ class Trading
             }
             try{
                 if(floatval($this->settings['profit_limit']) !== 0.0){
-                    $price = $close * (1 + floatval($this->settings['profit_limit']));
-//                  correcting quantity
-                    $minQty = $this->market['api']->exchangeInfo()['symbols'][$this->market['name']]['filters'][1]['minQty'];
-                    $c = $this->market['api']->numberOfDecimals($minQty);
-                    $this->balance = floor($this->balance * pow(10, $c)) / pow(10, $c);
+                    $price = $this->market['api']->filterPrice($this->market['name'],$close * (1 + floatval($this->settings['profit_limit'])));
+                    $this->balance = $this->market['api']->filterQty($this->market['name'],$this->balance);
 
                     $res = $this->market['api']->sell($this->market['name'], $this->balance, $price);
                     Order::create([
@@ -256,7 +253,7 @@ class Trading
             }catch (\Exception $e){
                 if($this->console)  $this->console->info('market '.$this->market['id'].' buy, limit_sell error: ' . $e->getMessage());
                 if(str_contains($e->getMessage(), 'MIN_NOTIONAL')){
-                    $this->market['mark'] = 'мала сума закупки';
+                    $this->market['mark'] = 'мала сума продажу';
                 }elseif(str_contains($e->getMessage(), 'insufficient balance')){
                     $this->market['mark'] = 'мало грошей';
                 }else{
@@ -309,8 +306,8 @@ class Trading
                     ->first();
                 if(!$order){
                     $this->status = 'deposit';
-                    $this->balance = floatval($order->quantity) * floatval($order->price);
-                    $this->old_balance = floatval($order->quantity);
+                    $this->balance = floatval($this->market['balance']) * floatval($this->market['old_price']);
+                    $this->old_balance = floatval($this->market['balance']);
                     return true;
                 }
                 $res = $this->market['api']->orderStatus($this->market['name'],$order->binance_id);
@@ -455,8 +452,9 @@ class Trading
                         $order->status = $res['status']; // CANCELED
                         $order->save();
                         // create new limit order
-                        $price = $this->getAvgBuyAgain()['price'];
-                        $res = $this->market['api']->sell($this->market['name'], $this->getAvgBuyAgain()['value'], $price);
+                        $price = $this->market['api']->filterPrice($this->market['name'],$this->getAvgBuyAgain()['price']);
+                        $quantity = $this->market['api']->filterQty($this->market['name'],$this->getAvgBuyAgain()['value']);
+                        $res = $this->market['api']->sell($this->market['name'], $quantity, $price);
                         Order::create([
                             'market_id' => $this->market['id'],
                             'binance_id' => $res['orderId'],
@@ -469,7 +467,7 @@ class Trading
                 } catch (\Exception $e) {
                     if ($this->console) $this->console->info('market ' . $this->market['id'] . ' buy_again, limit_sell error: ' . $e->getMessage());
                     if (str_contains($e->getMessage(), 'MIN_NOTIONAL')) {
-                        $this->market['mark'] = 'мала сума закупки';
+                        $this->market['mark'] = 'мала сума продажу';
                     } elseif (str_contains($e->getMessage(), 'insufficient balance')) {
                         $this->market['mark'] = 'мало грошей';
                     } else {

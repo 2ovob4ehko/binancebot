@@ -556,4 +556,18 @@ class BinanceSDK extends API
     {
         return $this->useTestnet ? $this->baseTestnet : $this->base;
     }
+
+    public function filterPrice(string $symbol, $price)
+    {
+        $minPrice = $this->exchangeInfo()['symbols'][$symbol]['filters'][0]['minPrice'];
+        $c = $this->numberOfDecimals($minPrice);
+        return $this->floorDecimal($price, $c);
+    }
+
+    public function filterQty(string $symbol, $qty)
+    {
+        $minQty = $this->exchangeInfo()['symbols'][$symbol]['filters'][1]['minQty'];
+        $c = $this->numberOfDecimals($minQty);
+        return $this->floorDecimal($qty, $c);
+    }
 }
