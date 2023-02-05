@@ -211,6 +211,7 @@ class Trading
         $this->balance = floatval($this->settings['start_balance']); // stable set amount of quote for buying
         if($this->market['is_trade']){
             try{
+                $this->balance = $this->market['api']->filterQuoteQty($this->market['name'],$this->balance,$close);
                 $res = $this->market['api']->marketQuoteBuy($this->market['name'],$this->balance);
                 if($this->console)  $this->console->info('market '.$this->market['id'].' buy: ' . json_encode($res));
                 $this->balance = 0;
@@ -397,6 +398,10 @@ class Trading
             count($this->buy_again_history) < $this->settings['buy_again_count_limit']){
             if($this->market['is_trade']){
                 try{
+                    $this->current_buy_again_lower = $this->market['api']->filterQuoteQty(
+                        $this->market['name'],
+                        floatval($this->current_buy_again_lower),
+                        $close);
                     $res = $this->market['api']->marketQuoteBuy($this->market['name'],$this->current_buy_again_balance);
                     if($this->console)  $this->console->info('market '.$this->market['id'].' buy_again: ' . json_encode($res));
                     $this->balance = 0;
