@@ -212,6 +212,8 @@ class Trading
         if($this->market['is_trade']){
             try{
                 $this->balance = $this->market['api']->filterQuoteQty($this->market['name'],$this->balance,$close);
+                if($this->console)  $this->console->info('market '.$this->market['id'].' buy balance: ' . json_encode($this->balance));
+                return false;
                 $res = $this->market['api']->marketQuoteBuy($this->market['name'],$this->balance);
                 if($this->console)  $this->console->info('market '.$this->market['id'].' buy: ' . json_encode($res));
                 $this->balance = 0;
@@ -227,6 +229,7 @@ class Trading
                 $this->balance = $this->balance - $commission_sum;
                 $trade_OK = true;
             }catch (\Exception $e){
+                if($this->console)  $this->console->info('market '.$this->market['id'].' buy balance: ' . json_encode($this->balance));
                 if($this->console)  $this->console->info('market '.$this->market['id'].' buy error: ' . $e->getMessage());
                 if(str_contains($e->getMessage(), 'MIN_NOTIONAL')){
                     $this->market['mark'] = 'мала сума закупки';
@@ -252,6 +255,7 @@ class Trading
                     ]);
                 }
             }catch (\Exception $e){
+                if($this->console)  $this->console->info('market '.$this->market['id'].' buy, limit_sell balance: ' . json_encode($this->balance).' price: '.json_encode($price));
                 if($this->console)  $this->console->info('market '.$this->market['id'].' buy, limit_sell error: ' . $e->getMessage());
                 if(str_contains($e->getMessage(), 'MIN_NOTIONAL')){
                     $this->market['mark'] = 'мала сума продажу';
@@ -513,7 +517,7 @@ class Trading
         $stoch_buy_rule = !$this->is_stoch || $this->stoch_rsi_logic === 'up';
         $stoch_sell_rule = !$this->is_stoch || $this->stoch_rsi_logic === 'down';
 
-        if($this->status == 'deposit' && $rsi_buy_rule && $stoch_buy_rule){
+        if($this->status == 'deposit' /*&& $rsi_buy_rule*/ && $stoch_buy_rule){
             $trade_OK = $this->onDeposit($commission,$close);
         }elseif($this->status == 'bought') {
             $trade_OK = $this->onBuyAgain($commission,$close);
