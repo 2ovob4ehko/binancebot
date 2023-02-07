@@ -586,7 +586,7 @@ class BinanceSDK extends API
         $minQty = $filters[1]['minQty'];
         $minNotional = $filters[2]['minNotional'];
 
-        $qty = $quiteQty / $price;
+        $qty = ($quiteQty / $price)-$minQty;
         $c = $this->numberOfDecimals($minQty);
         $cp = $this->numberOfDecimals($minPrice);
         $qty = $this->floorDecimal($qty, $c);
