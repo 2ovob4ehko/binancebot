@@ -212,7 +212,10 @@ class Trading
         if($this->market['is_trade']){
             try{
                 $this->balance = $this->market['api']->filterQuoteQty($this->market['name'],$this->balance,$close);
-                if($this->console)  $this->console->info('market '.$this->market['id'].' buy balance: ' . json_encode($this->balance));
+                if($this->console)  $this->console->info('market '.$this->market['id'].' buy ' . json_encode([
+                    'balance' => $this->balance,
+                    'price' => $close
+                ]));
                 return false;
                 $res = $this->market['api']->marketQuoteBuy($this->market['name'],$this->balance);
                 if($this->console)  $this->console->info('market '.$this->market['id'].' buy: ' . json_encode($res));
