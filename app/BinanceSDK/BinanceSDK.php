@@ -588,11 +588,13 @@ class BinanceSDK extends API
 
         $qty = $quiteQty / $price;
         $c = $this->numberOfDecimals($minQty);
+        $cp = $this->numberOfDecimals($minPrice);
         $qty = $this->floorDecimal($qty, $c);
         $testQuoteQty = $qty * $price;
 
         while ($testQuoteQty < $minNotional) {
             $quiteQty += $minPrice;
+            $quiteQty = ceil($quiteQty * pow(10, $cp)) / pow(10, $cp);
             $qty = $quiteQty / $price;
             $qty = $this->floorDecimal($qty, $c);
             $testQuoteQty = $qty * $price;
