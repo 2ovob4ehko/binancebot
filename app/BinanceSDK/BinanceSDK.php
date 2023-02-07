@@ -595,7 +595,7 @@ class BinanceSDK extends API
         while ($testQuoteQty < $minNotional) {
             $quiteQty += $minPrice;
             $quiteQty = ceil($quiteQty * pow(10, $cp)) / pow(10, $cp);
-            $qty = $quiteQty / $price;
+            $qty = ($quiteQty / $price)-$minQty;
             $qty = $this->floorDecimal($qty, $c);
             $testQuoteQty = $qty * $price;
         }
