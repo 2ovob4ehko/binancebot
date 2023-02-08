@@ -320,12 +320,12 @@ class Trading
                 $order->save();
                 if($res['status'] !== 'NEW' && $res['status'] !== 'PARTIALLY_FILLED'){
                     $this->status = 'deposit';
-                    $trade_OK = true;
                     if($res['status'] === 'FILLED'){
                         $this->balance = $res['cummulativeQuoteQty'];
                         $this->old_balance = floatval($res['origQty']);
                         $close = floatval($order->price);
                         $this->market['mark'] = 'sell';
+                        $trade_OK = true;
                     }else{
                         $this->balance = floatval($order->quantity) * floatval($order->price);
                         $this->old_balance = floatval($order->quantity);
