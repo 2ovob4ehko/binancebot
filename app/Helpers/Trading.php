@@ -7,6 +7,7 @@ use App\Http\Controllers\MarketController;
 use App\Models\Market;
 use App\Models\Order;
 use App\Models\Simulation;
+use Carbon\Carbon;
 
 class Trading
 {
@@ -131,6 +132,33 @@ class Trading
             $this->is_stoch = true;
         }else{
             $this->stoch_rsi = [];
+        }
+    }
+
+    function makeStopAnalis()
+    {
+        $close = floatval($this->trade['c']);
+        $today = Carbon::parse(date("Y-m-d",intval($this->trade['T'])/1000));
+        if($this->settings['stop_on_down'] && (!array_key_exists('stop_data',$this->market) ||
+            Carbon::parse($this->market['stop_data']['date'])->lt($today))){
+
+            $analysis = new Analysis();
+            $candles = MarketController::multilimitQuery($this->market['name'],'1d',50,intval($this->trade['T']));
+            $closed = array_map(function($el){return floatval($el[4]);}, $candles);
+            $macd = $analysis->macd($closed,12,26,9);
+            $last_index = count($closed)-1;
+
+            $this->market['stop_data'] = [];
+            $this->market['stop_data']['date'] = $today->format('Y-m-d');
+            $this->market['stop_data']['value'] = $macd['histogram'][$last_index];
+
+            $this->market['is_stop'] = ($this->market['stop_data']['value'] < (0.5 * $close / 100));
+        }else{
+            if(array_key_exists('stop_data',$this->market)){
+                $this->market['is_stop'] = ($this->market['stop_data']['value'] < (0.5 * $close / 100));
+            }else{
+                $this->market['is_stop'] = false;
+            }
         }
     }
 
@@ -517,7 +545,7 @@ class Trading
         $stoch_buy_rule = !$this->is_stoch || $this->stoch_rsi_logic === 'up';
         $stoch_sell_rule = !$this->is_stoch || $this->stoch_rsi_logic === 'down';
 
-        if($this->status == 'deposit' && $rsi_buy_rule && $stoch_buy_rule){
+        if($this->status == 'deposit' && !$this->market['is_stop'] && $rsi_buy_rule && $stoch_buy_rule){
             $trade_OK = $this->onDeposit($commission,$close);
         }elseif($this->status == 'bought') {
             $trade_OK = $this->onBuyAgain($commission,$close);
@@ -549,6 +577,7 @@ class Trading
 
         $this->addCandleData();
         $this->makeAnalis();
+        $this->makeStopAnalis();
         $this->getLastBalance();
         $this->getStochRsiLogic();
 

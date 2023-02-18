@@ -71,6 +71,7 @@ class MarketController extends Controller
             'buy_again_count_limit' => $request->buy_again_count_limit ?? null,
             'buy_again_lower_progress' => $request->buy_again_lower_progress ?? null,
             'buy_again_amount_progress' => $request->buy_again_amount_progress ?? null,
+            'stop_on_down' => $request->has('stop_on_down'),
         ];
         if($request->has('id')){
             if(!Auth::user()->markets->contains($request->id)) return redirect('/');
@@ -178,12 +179,12 @@ class MarketController extends Controller
         $self = new MarketController();
         return $self->multilimitCSVQuery($symbol,$interval,$limit);
     }
-    public static function multilimitQuery($symbol,$interval,$limit)
+    public static function multilimitQuery($symbol,$interval,$limit,$time = null)
     {
         $times = intval($limit / 1000);
         $rest = $limit % 1000;
         $candles = [];
-        $time = time() * 1000;
+        $time = $time ?? time() * 1000;
         for($i=0;$i<$times;$i++){
             $json = file_get_contents('https://api.binance.com/api/v3/klines?symbol='.$symbol.'&interval='.$interval.'&limit=1000&endTime='.$time);
             $data = json_decode($json);

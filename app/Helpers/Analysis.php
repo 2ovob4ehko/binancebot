@@ -106,8 +106,12 @@ class Analysis
         $serial[$period2+$period3-2] = array_sum($a)/count($a);
         $histogram[$period2+$period3-2] = $macd[$period2+$period3-2]-$serial[$period2+$period3-2];
 
-        for ($i=$period2+$period3-2; $i < count($data); $i++) {
-            $serial[$i] = (($macd[$i]-$serial[$i-1])*(2/($period3+1)))+$serial[$i-1];
+        for ($i=$period2+$period3-1; $i < count($data); $i++) {
+            $serial[$i] =
+                (($macd[$i]-
+                        $serial[$i-1]
+                    )*(2/($period3+1)))+
+                $serial[$i-1];
             $histogram[$i] = $macd[$i]-$serial[$i];
         }
 

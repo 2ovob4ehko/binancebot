@@ -113,6 +113,14 @@
                                                 </div>
                                             </div>
                                         </div>
+                                        <div class="col-12 col-sm-6 col-md-4 p-1 d-flex align-items-center">
+                                            <div class="d-flex align-items-center">
+                                                <label class="mx-2" for="stop_on_down_{{$market->id}}">Зупинити купівлю при падінні</label>
+                                                <div class="col">
+                                                    <input type="checkbox" id="stop_on_down_{{$market->id}}" name="stop_on_down" value="yes" class="form-check-input" {{$market->settings['stop_on_down'] ?? '' ? 'checked' : ''}}>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                     <hr/>
                                     <div class="row mx-0">
